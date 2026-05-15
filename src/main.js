@@ -15,6 +15,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let userMarker = null
+let userLatLon = null        // kept current for drawer distance sorting
 let poiMarkers = new Map()  // id → marker
 let loadedPOIs = new Map()  // id → poi
 let lastFetchCenter = null
@@ -32,6 +33,10 @@ const tourPanel = document.getElementById('tour-panel')
 const tourClose = document.getElementById('tour-close')
 const faqPanel = document.getElementById('faq-panel')
 const faqClose = document.getElementById('faq-close')
+const poiDrawer = document.getElementById('poi-drawer')
+const poiDrawerHandle = document.getElementById('poi-drawer-handle')
+const poiDrawerLabel = document.getElementById('poi-drawer-label')
+const poiDrawerList = document.getElementById('poi-drawer-list')
 
 // ── Panel toggles ─────────────────────────────────────────────────────────────
 
@@ -47,6 +52,10 @@ btnFaq.addEventListener('click', () => {
 faqClose.addEventListener('click', () => faqPanel.classList.add('hidden'))
 recenterBtn.addEventListener('click', () => {
   if (userMarker) map.setView(userMarker.getLatLng(), map.getZoom())
+})
+
+poiDrawerHandle.addEventListener('click', () => {
+  poiDrawer.classList.toggle('open')
 })
 
 // ── POI markers ───────────────────────────────────────────────────────────────
@@ -71,6 +80,43 @@ function addPOIMarker(poi) {
   poiMarkers.set(poi.id, marker)
 }
 
+// ── Nearby POI drawer ─────────────────────────────────────────────────────────
+
+function refreshDrawer() {
+  const all = [...loadedPOIs.values()].filter(p => p.lat != null)
+  // Sort by distance from user if we have a position, else by name
+  if (userLatLon) {
+    const { lat, lon } = userLatLon
+    all.sort((a, b) => distance(lat, lon, a.lat, a.lon) - distance(lat, lon, b.lat, b.lon))
+  } else {
+    all.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+  }
+  poiDrawerLabel.textContent = `${all.length} place${all.length !== 1 ? 's' : ''} nearby`
+  poiDrawerList.innerHTML = all.map(poi => {
+    const dist = userLatLon
+      ? formatDist(distance(userLatLon.lat, userLatLon.lon, poi.lat, poi.lon))
+      : ''
+    return `<li data-id="${poi.id}">
+      <span class="poi-row-dist">${dist}</span>
+      <span class="poi-row-name">${poi.name || '(unnamed)'}</span>
+      <span class="poi-row-type">${(poi.type || '').replace(/_/g, ' ')}</span>
+    </li>`
+  }).join('')
+  ;[...poiDrawerList.children].forEach(li => {
+    li.addEventListener('click', () => {
+      const poi = loadedPOIs.get(li.dataset.id)
+      if (!poi) return
+      map.setView([poi.lat, poi.lon], 17)
+      showCard(poi)
+      poiDrawer.classList.remove('open')
+    })
+  })
+}
+
+function formatDist(m) {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`
+}
+
 // ── Fetch POIs from Overpass ───────────────────────────────────────────────────
 
 async function fetchPOIs(lat, lon) {
@@ -83,7 +129,7 @@ async function fetchPOIs(lat, lon) {
         addPOIMarker(poi)
       }
     }
-    statusText.textContent = `${loadedPOIs.size} places nearby`
+    refreshDrawer()
     lastFetchCenter = { lat, lon }
   } catch (err) {
     statusText.textContent = 'Could not fetch places'
@@ -126,6 +172,7 @@ let centered = false
 getFastPosition()
   .then(pos => {
     const { latitude: lat, longitude: lon } = pos.coords
+    userLatLon = { lat, lon }
     map.setView([lat, lon], 16)
     userMarker = L.circleMarker([lat, lon], {
       radius: 7,
@@ -146,6 +193,7 @@ getFastPosition()
 watchPosition(
   pos => {
     const { latitude: lat, longitude: lon } = pos.coords
+    userLatLon = { lat, lon }
 
     if (!userMarker) {
       userMarker = L.circleMarker([lat, lon], {
@@ -158,8 +206,6 @@ watchPosition(
     } else {
       userMarker.setLatLng([lat, lon])
     }
-
-    statusText.textContent = `${loadedPOIs.size} places nearby`
 
     // Don't fetch POIs until the initial map center is set
     if (!centered) return
@@ -181,13 +227,23 @@ watchPosition(
 
 // ── Tour integration ──────────────────────────────────────────────────────────
 
-// Add markers when tour starts
 document.addEventListener('tour:started', () => {
   for (const poi of tour.getPOIs()) {
     if (poi.lat && poi.lon) {
       loadedPOIs.set(poi.id, poi)
       addPOIMarker(poi)
     }
+  }
+  refreshDrawer()
+})
+
+// POI added/loaded from tour — show on map immediately
+document.addEventListener('tour:poi-added', e => {
+  const poi = e.detail
+  if (poi.lat && poi.lon) {
+    loadedPOIs.set(poi.id, poi)
+    addPOIMarker(poi)
+    refreshDrawer()
   }
 })
 

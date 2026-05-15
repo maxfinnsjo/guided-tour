@@ -83,6 +83,10 @@ export function loadTour(name) {
   nameInput.value = name
   renderList()
   enableStart()
+  // Notify main.js so markers appear immediately
+  pois.forEach(poi =>
+    document.dispatchEvent(new CustomEvent('tour:poi-added', { detail: poi }))
+  )
   return true
 }
 
@@ -115,6 +119,7 @@ export function addPOI(poi) {
   renderList()
   enableStart()
   saveTourState()
+  document.dispatchEvent(new CustomEvent('tour:poi-added', { detail: poi }))
 }
 
 export function updatePOI(id, patch) {
@@ -368,3 +373,10 @@ function parseCSV(text) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 refreshSavedSelect()
+
+// Auto-load the most recently updated saved tour
+const _saved = loadSavedTours()
+if (_saved.length) {
+  const _last = _saved.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0]
+  loadTour(_last.name)
+}
