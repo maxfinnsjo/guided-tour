@@ -22,6 +22,29 @@ let lastFetchCenter = null
 const FETCH_RADIUS = 600
 const REFETCH_DISTANCE = 200
 const PROXIMITY_ALERT = 80
+const POI_STORAGE_KEY = 'guided-tour-pois-v1'
+
+function persistPOIs() {
+  try {
+    const arr = [...loadedPOIs.values()]
+    localStorage.setItem(POI_STORAGE_KEY, JSON.stringify(arr))
+  } catch {}
+}
+
+function loadPersistedPOIs() {
+  try {
+    const raw = localStorage.getItem(POI_STORAGE_KEY)
+    if (!raw) return
+    const arr = JSON.parse(raw)
+    for (const poi of arr) {
+      if (!loadedPOIs.has(poi.id)) {
+        loadedPOIs.set(poi.id, poi)
+        addPOIMarker(poi)
+      }
+    }
+    refreshDrawer()
+  } catch {}
+}
 
 // ── UI refs ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +159,7 @@ async function fetchPOIs(lat, lon) {
       }
     }
     refreshDrawer()
+    persistPOIs()
     lastFetchCenter = { lat, lon }
     const n = loadedPOIs.size
     statusText.textContent = `${n} place${n !== 1 ? 's' : ''} nearby`
@@ -173,6 +197,9 @@ function checkTourProximity(lat, lon) {
 }
 
 // ── Location tracking ─────────────────────────────────────────────────────────
+
+// Load last session's POIs immediately so the map isn't blank while GPS resolves
+loadPersistedPOIs()
 
 // Phase 1: fast low-accuracy fix (IP/WiFi) — centers the map immediately
 // Phase 2: watchPosition with high-accuracy refines the marker in the background

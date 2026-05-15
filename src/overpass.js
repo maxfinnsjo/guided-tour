@@ -5,9 +5,16 @@ const ENDPOINTS = [
 ]
 const OVERPASS_CACHE = 'overpass-v1'
 
-// POI types we care about — name + tourism/historic/amenity tags
+// Quantise coords to ~500m grid so minor GPS drift reuses the same cache entry
+function gridKey(lat, lon, radius) {
+  const step = (radius / 111000) * 0.8
+  const glat = Math.round(lat / step) * step
+  const glon = Math.round(lon / step) * step
+  return `${glat.toFixed(5)},${glon.toFixed(5)},${radius}`
+}
+
 const QUERY_TEMPLATE = (lat, lon, radius) => `
-[out:json][timeout:15];
+[out:json][timeout:25];
 (
   node["tourism"~"attraction|museum|artwork|viewpoint|monument|gallery|zoo|theme_park"](around:${radius},${lat},${lon});
   node["historic"~"monument|memorial|castle|ruins|building|archaeological_site|church"](around:${radius},${lat},${lon});
@@ -18,9 +25,8 @@ const QUERY_TEMPLATE = (lat, lon, radius) => `
 out center tags;
 `
 
-// Cache key is query-body-derived, independent of which endpoint served it
-function cacheKey(body) {
-  return new Request(`overpass://cache?_k=${btoa(body).slice(0, 80)}`, { method: 'GET' })
+function cacheRequest(gk) {
+  return new Request(`overpass://cache?gk=${encodeURIComponent(gk)}`, { method: 'GET' })
 }
 
 async function tryEndpoint(endpoint, body) {
@@ -34,30 +40,47 @@ async function tryEndpoint(endpoint, body) {
 }
 
 export async function fetchNearbyPOIs(lat, lon, radiusMeters = 500) {
-  const body = `data=${encodeURIComponent(QUERY_TEMPLATE(lat, lon, radiusMeters))}`
-  const key = cacheKey(body)
-  const cache = await caches.open(OVERPASS_CACHE)
+  const gk = gridKey(lat, lon, radiusMeters)
+  const cacheReq = cacheRequest(gk)
 
-  // Try each endpoint in order, stop at first success
-  let lastErr
-  for (const endpoint of ENDPOINTS) {
-    try {
-      const res = await tryEndpoint(endpoint, body)
-      cache.put(key, res.clone())
-      const data = await res.json()
-      return data.elements.map(el => normalizePOI(el)).filter(p => p.name)
-    } catch (err) {
-      lastErr = err
+  let cache = null
+  try { cache = await caches.open(OVERPASS_CACHE) } catch {}
+
+  if (cache) {
+    const cached = await cache.match(cacheReq).catch(() => null)
+    if (cached) {
+      try {
+        const data = await cached.json()
+        const pois = data.elements.map(el => normalizePOI(el)).filter(p => p.name)
+        // Refresh in background — caller already has data, silent failure is fine
+        _fetchAndCache(lat, lon, radiusMeters, gk, cache, cacheReq).catch(() => {})
+        return pois
+      } catch {}
     }
   }
 
-  // All endpoints failed — serve cached data if available
-  const cached = await cache.match(key)
-  if (cached) {
-    const data = await cached.json()
-    return data.elements.map(el => normalizePOI(el)).filter(p => p.name)
+  // No usable cache — wait for network
+  return _fetchAndCache(lat, lon, radiusMeters, gk, cache, cacheReq)
+}
+
+async function _fetchAndCache(lat, lon, radius, gk, cache, cacheReq) {
+  const body = `data=${encodeURIComponent(QUERY_TEMPLATE(lat, lon, radius))}`
+
+  // Race all endpoints — fastest wins; fall back to serial if Promise.any unavailable
+  let res
+  if (typeof Promise.any === 'function') {
+    res = await Promise.any(ENDPOINTS.map(ep => tryEndpoint(ep, body)))
+  } else {
+    let lastErr
+    for (const ep of ENDPOINTS) {
+      try { res = await tryEndpoint(ep, body); break } catch (e) { lastErr = e }
+    }
+    if (!res) throw lastErr
   }
-  throw lastErr
+
+  if (cache) cache.put(cacheReq, res.clone()).catch(() => {})
+  const data = await res.json()
+  return data.elements.map(el => normalizePOI(el)).filter(p => p.name)
 }
 
 function normalizePOI(el) {

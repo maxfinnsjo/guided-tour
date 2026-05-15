@@ -199,6 +199,16 @@ button#btn-recenter {
 #fc-basics-list li { font-size: 0.83rem; color: var(--muted); }
 #fc-basics-list li strong { color: var(--text); margin-right: 4px; }
 
+/* Fact sheet (Wikidata people + year) */
+#fc-sheet { margin-bottom: 14px; }
+#fc-sheet-year { font-size: 0.83rem; color: var(--muted); margin-bottom: 8px; }
+#fc-sheet-year strong { color: var(--text); margin-right: 4px; }
+#fc-sheet-people { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+#fc-sheet-people li { font-size: 0.83rem; line-height: 1.4; }
+#fc-sheet-people .person-name { color: var(--text); font-weight: 600; }
+#fc-sheet-people .person-role { color: var(--accent); font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 6px; }
+#fc-sheet-people .person-dates { color: var(--muted); font-size: 0.78rem; display: block; margin-top: 1px; }
+
 /* Wikidata quick facts */
 #fc-facts { margin-bottom: 14px; }
 #fc-facts-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }

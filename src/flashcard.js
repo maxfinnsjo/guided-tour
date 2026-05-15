@@ -7,6 +7,9 @@ const fcOsmNote = document.getElementById('fc-osm-note')
 const fcOsmInscription = document.getElementById('fc-osm-inscription')
 const fcBasics = document.getElementById('fc-basics')
 const fcBasicsList = document.getElementById('fc-basics-list')
+const fcSheet = document.getElementById('fc-sheet')
+const fcSheetYear = document.getElementById('fc-sheet-year')
+const fcSheetPeople = document.getElementById('fc-sheet-people')
 const fcFacts = document.getElementById('fc-facts')
 const fcFactsList = document.getElementById('fc-facts-list')
 const fcFaq = document.getElementById('fc-faq')
@@ -60,6 +63,9 @@ export function show(poi) {
   }
 
   // Reset async sections
+  fcSheet.classList.add('hidden')
+  fcSheetYear.innerHTML = ''
+  fcSheetPeople.innerHTML = ''
   fcFacts.classList.add('hidden')
   fcFactsList.innerHTML = ''
   fcWiki.classList.add('hidden')
@@ -91,6 +97,28 @@ export function show(poi) {
             .join('')
           fcFacts.classList.remove('hidden')
         }
+      })
+
+      buildFactSheet(qid).then(sheet => {
+        let hasContent = false
+        if (sheet.year) {
+          fcSheetYear.innerHTML = `<strong>Year:</strong> ${sheet.year}`
+          hasContent = true
+        }
+        if (sheet.people && sheet.people.length) {
+          fcSheetPeople.innerHTML = sheet.people.map(p => {
+            const dates = [p.born, p.died].filter(Boolean)
+            const datesStr = dates.length
+              ? (p.born && p.died ? `${p.born} – ${p.died}` : p.born ? `b. ${p.born}` : `d. ${p.died}`)
+              : ''
+            return `<li>
+              <span class="person-name">${p.name}</span><span class="person-role">${p.role}</span>
+              ${datesStr ? `<span class="person-dates">${datesStr}</span>` : ''}
+            </li>`
+          }).join('')
+          hasContent = true
+        }
+        if (hasContent) fcSheet.classList.remove('hidden')
       })
     }
 
@@ -234,6 +262,72 @@ const WIKIDATA_PROPS = {
   P466:  'Occupant',
 }
 
+// People-related properties for the fact sheet
+const PEOPLE_PROPS = {
+  P84:  'Architect',
+  P112: 'Founder',
+  P170: 'Creator',
+  P547: 'Commemorates',
+  P138: 'Named after',
+  P127: 'Owned by',
+}
+
+async function fetchPersonDates(qid) {
+  const entity = await fetchWikidataEntity(qid)
+  if (!entity) return null
+  const claims = entity.claims || {}
+  const label = entity.labels?.en?.value || null
+
+  const extractYear = entries => {
+    if (!entries || !entries.length) return null
+    return extractClaimValue(entries[0])
+  }
+
+  return {
+    name: label,
+    born: extractYear(claims.P569),
+    died: extractYear(claims.P570),
+  }
+}
+
+async function buildPeopleSheet(claims) {
+  const seen = new Set()
+  const tasks = []
+
+  for (const [pid, role] of Object.entries(PEOPLE_PROPS)) {
+    const entries = claims[pid]
+    if (!entries) continue
+    for (const entry of entries) {
+      const sv = entry?.mainsnak?.datavalue?.value
+      const personQid = sv?.id
+      if (!personQid || seen.has(personQid)) continue
+      seen.add(personQid)
+      tasks.push({ qid: personQid, role })
+    }
+  }
+
+  if (!tasks.length) return []
+
+  const results = await Promise.all(
+    tasks.map(t => fetchPersonDates(t.qid).then(p => p ? { ...p, role: t.role } : null))
+  )
+
+  return results.filter(p => p && p.name)
+}
+
+async function buildFactSheet(qid) {
+  const entity = await fetchWikidataEntity(qid)
+  if (!entity) return { year: null, people: [] }
+
+  const claims = entity.claims || {}
+
+  const yearEntry = claims.P571 || claims.P1319 || null
+  const year = yearEntry ? extractClaimValue(yearEntry[0]) : null
+
+  const people = await buildPeopleSheet(claims)
+  return { year, people }
+}
+
 async function fetchWikidataFacts(qid) {
   if (!qid) return null
   const cacheKey = `wikidata:${qid}`
@@ -268,7 +362,7 @@ async function fetchWikidataEntity(qid) {
   try {
     const url =
       `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}` +
-      `&props=claims|sitelinks&format=json&origin=*`
+      `&props=claims|sitelinks|labels&languages=en&format=json&origin=*`
     const res = await fetch(url, { headers: { Accept: 'application/json' } })
     if (!res.ok) { wikiCache.set(cacheKey, null); return null }
     const data = await res.json()
