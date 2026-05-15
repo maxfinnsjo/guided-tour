@@ -15,7 +15,7 @@ export function getAccuratePosition() {
     if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
       enableHighAccuracy: true,
-      maximumAge: 0,
+      maximumAge: 3000,
       timeout: 10000,
     })
   })
@@ -28,7 +28,7 @@ export function watchPosition(onSuccess, onError) {
   }
   return navigator.geolocation.watchPosition(onSuccess, onError, {
     enableHighAccuracy: true,
-    maximumAge: 0,
+    maximumAge: 3000,
     timeout: 10000,
   })
 }
