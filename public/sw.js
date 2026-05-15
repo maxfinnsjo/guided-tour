@@ -1,4 +1,4 @@
-const CACHE = 'guided-tour-v2'
+const CACHE = 'guided-tour-v3'
 
 self.addEventListener('install', e => {
   // Only cache the shell HTML — not source files, which Vite rewrites
@@ -18,9 +18,22 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url)
 
-  // External (tiles, Overpass, Wikipedia): network-first, cache as fallback
+  // External (tiles, Overpass, Wikipedia, Wikidata): cache-then-network
+  // Always store successful responses; serve cache when network fails or errors
   if (url.origin !== location.origin) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)))
+    e.respondWith(
+      caches.open(CACHE).then(async cache => {
+        try {
+          const res = await fetch(e.request.clone())
+          if (res.ok) cache.put(e.request, res.clone())
+          return res
+        } catch {
+          const cached = await cache.match(e.request)
+          if (cached) return cached
+          throw new Error('offline')
+        }
+      })
+    )
     return
   }
 

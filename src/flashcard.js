@@ -5,6 +5,8 @@ const fcDesc = document.getElementById('fc-desc')
 const fcOsm = document.getElementById('fc-osm')
 const fcOsmNote = document.getElementById('fc-osm-note')
 const fcOsmInscription = document.getElementById('fc-osm-inscription')
+const fcBasics = document.getElementById('fc-basics')
+const fcBasicsList = document.getElementById('fc-basics-list')
 const fcFacts = document.getElementById('fc-facts')
 const fcFactsList = document.getElementById('fc-facts-list')
 const fcFaq = document.getElementById('fc-faq')
@@ -45,6 +47,17 @@ export function show(poi) {
   fcOsmNote.textContent = note ? `Note: ${note}` : ''
   fcOsmInscription.textContent = inscription ? `Inscription: ${inscription}` : ''
   fcOsm.classList.toggle('hidden', !note && !inscription)
+
+  // Basic facts (synchronous — from OSM tags)
+  const basics = buildBasicFacts(t)
+  if (basics.length) {
+    fcBasicsList.innerHTML = basics
+      .map(f => `<li><strong>${f.label}:</strong> ${f.value}</li>`)
+      .join('')
+    fcBasics.classList.remove('hidden')
+  } else {
+    fcBasics.classList.add('hidden')
+  }
 
   // Reset async sections
   fcFacts.classList.add('hidden')
@@ -305,6 +318,21 @@ function descriptionFromTags(tags = {}) {
   if (tags.phone) parts.push(`Phone: ${tags.phone}`)
   if (tags.wheelchair) parts.push(`Wheelchair: ${tags.wheelchair}`)
   return parts.join(' · ') || ''
+}
+
+function buildBasicFacts(tags = {}) {
+  const facts = []
+  const add = (label, value) => { if (value) facts.push({ label, value }) }
+
+  add('Year built',   tags.start_date || tags.year_of_construction || tags.construction_date)
+  add('Opened',       tags.opening_date)
+  add('Architect',    tags.architect)
+  add('Artist',       tags.artist_name)
+  add('Operator',     tags.operator)
+  add('Denomination', tags.denomination)
+  add('Heritage',     tags.heritage_operator || tags['heritage:operator'])
+
+  return facts
 }
 
 function buildFAQ(poi) {

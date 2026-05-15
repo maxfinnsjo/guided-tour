@@ -193,6 +193,12 @@ button#btn-recenter {
 #fc-osm p { font-size: 0.83rem; color: var(--muted); line-height: 1.5; }
 #fc-osm p:empty { display: none; }
 
+/* At a glance (OSM basic facts) */
+#fc-basics { margin-bottom: 14px; }
+#fc-basics-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+#fc-basics-list li { font-size: 0.83rem; color: var(--muted); }
+#fc-basics-list li strong { color: var(--text); margin-right: 4px; }
+
 /* Wikidata quick facts */
 #fc-facts { margin-bottom: 14px; }
 #fc-facts-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
