@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Guided Tour</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <span id="mode-label">Free Roam</span>
+      <div id="header-actions">
+        <button id="btn-tour" title="Tour mode">Tour</button>
+        <button id="btn-faq" title="FAQ">FAQ</button>
+      </div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Flash card -->
+    <div id="flashcard" class="hidden">
+      <button id="flashcard-close">✕</button>
+      <div id="flashcard-content">
+        <h2 id="fc-name"></h2>
+        <p id="fc-type"></p>
+        <p id="fc-desc"></p>
+        <div id="fc-faq" class="hidden">
+          <h3>FAQ</h3>
+          <ul id="fc-faq-list"></ul>
+        </div>
+        <button id="fc-faq-toggle">Show FAQ</button>
+      </div>
+    </div>
+
+    <!-- Tour panel -->
+    <div id="tour-panel" class="hidden">
+      <div id="tour-header">
+        <h2>Tour</h2>
+        <button id="tour-close">✕</button>
+      </div>
+      <div id="tour-import">
+        <label>Import POIs (JSON or CSV)
+          <input type="file" id="tour-file" accept=".json,.csv" />
+        </label>
+        <button id="tour-start" class="disabled" disabled>Start Tour</button>
+      </div>
+      <ol id="tour-list"></ol>
+    </div>
+
+    <!-- FAQ panel -->
+    <div id="faq-panel" class="hidden">
+      <div id="faq-header">
+        <h2>FAQ</h2>
+        <button id="faq-close">✕</button>
+      </div>
+      <div id="faq-content">
+        <p>Select a POI on the map to see its FAQ, or browse nearby POIs.</p>
+      </div>
+    </div>
+
+    <div id="status-bar">
+      <span id="status-text">Locating…</span>
+      <button id="btn-recenter" title="Re-center">⊙</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
