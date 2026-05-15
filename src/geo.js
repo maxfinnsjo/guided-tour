@@ -17,7 +17,7 @@ export function getFastPosition() {
     navigator.geolocation.getCurrentPosition(resolve, reject, {
       enableHighAccuracy: false,
       maximumAge: 60000,
-      timeout: 5000,
+      timeout: 12000,
     })
   })
 }
@@ -28,8 +28,8 @@ export function watchPosition(onSuccess, onError) {
     return null
   }
   return navigator.geolocation.watchPosition(onSuccess, onError, {
-    enableHighAccuracy: true,
-    maximumAge: 3000,
+    enableHighAccuracy: false,
+    maximumAge: 10000,
     timeout: 10000,
   })
 }

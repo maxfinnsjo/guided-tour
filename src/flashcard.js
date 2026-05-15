@@ -67,30 +67,32 @@ export function show(poi) {
   fcFaq.classList.add('hidden')
   fcFaqToggle.textContent = 'Show FAQ'
 
-  // Kick off async enrichment in parallel
-  const qid = t.wikidata
-  if (qid) {
-    fetchWikidataFacts(qid).then(facts => {
-      if (facts && facts.length) {
-        fcFactsList.innerHTML = facts
-          .map(f => `<li><strong>${f.label}:</strong> ${f.value}</li>`)
-          .join('')
-        fcFacts.classList.remove('hidden')
+  // Resolve Wikidata QID by name if not already tagged, then enrich
+  resolveWikidataByName(poi).then(() => {
+    const qid = poi.tags?.wikidata
+    if (qid) {
+      fetchWikidataFacts(qid).then(facts => {
+        if (facts && facts.length) {
+          fcFactsList.innerHTML = facts
+            .map(f => `<li><strong>${f.label}:</strong> ${f.value}</li>`)
+            .join('')
+          fcFacts.classList.remove('hidden')
+        }
+      })
+    }
+
+    enrichFromWiki(poi).then(summary => {
+      fcWikiLoading.classList.add('hidden')
+      if (summary && summary.extract) {
+        fcWikiExtract.textContent = summary.extract
+        fcWikiLink.href = summary.url
+        if (summary.thumbnail) {
+          fcWikiThumb.src = summary.thumbnail
+          fcWikiThumb.classList.remove('hidden')
+        }
+        fcWiki.classList.remove('hidden')
       }
     })
-  }
-
-  enrichFromWiki(poi).then(summary => {
-    fcWikiLoading.classList.add('hidden')
-    if (summary && summary.extract) {
-      fcWikiExtract.textContent = summary.extract
-      fcWikiLink.href = summary.url
-      if (summary.thumbnail) {
-        fcWikiThumb.src = summary.thumbnail
-        fcWikiThumb.classList.remove('hidden')
-      }
-      fcWiki.classList.remove('hidden')
-    }
   })
 
   card.classList.remove('hidden')
@@ -102,61 +104,103 @@ export function hide() {
 
 // ── Wikipedia enrichment ──────────────────────────────────────────────────────
 
+async function resolveWikidataByName(poi) {
+  if (poi.tags?.wikidata || poi.tags?.wikipedia) return
+  const name = poi.name?.trim()
+  if (!name) return
+
+  const cacheKey = `name-search:${name}`
+  if (wikiCache.has(cacheKey)) {
+    const qid = wikiCache.get(cacheKey)
+    if (qid) poi.tags.wikidata = qid
+    return
+  }
+
+  try {
+    const url =
+      `https://www.wikidata.org/w/api.php?action=wbsearchentities` +
+      `&search=${encodeURIComponent(name)}&language=en&format=json&origin=*`
+    const res = await fetch(url, { headers: { Accept: 'application/json' } })
+    if (!res.ok) { wikiCache.set(cacheKey, null); return }
+    const data = await res.json()
+    const results = data.search || []
+    if (!results.length) { wikiCache.set(cacheKey, null); return }
+
+    const type = (poi.type || '').toLowerCase()
+    let best = results.find(r =>
+      type && type !== 'poi' && (r.description || '').toLowerCase().includes(type)
+    )
+    if (!best) best = results[0]
+
+    const qid = best?.id
+    wikiCache.set(cacheKey, qid ?? null)
+    if (qid) poi.tags.wikidata = qid
+  } catch {
+    wikiCache.set(cacheKey, null)
+  }
+}
+
 async function enrichFromWiki(poi) {
-  const title = await resolveWikiTitle(poi)
-  if (!title) return null
-  if (wikiCache.has(title)) return wikiCache.get(title)
-  const summary = await fetchWikiSummary(title)
-  wikiCache.set(title, summary)
+  const result = await resolveWikiTitle(poi)
+  if (!result) return null
+  const cacheKey = `${result.lang}:${result.title}`
+  if (wikiCache.has(cacheKey)) return wikiCache.get(cacheKey)
+  const summary = await fetchWikiSummary(result.title, result.lang)
+  wikiCache.set(cacheKey, summary)
   return summary
 }
 
 async function resolveWikiTitle(poi) {
   const wp = poi.tags?.wikipedia
-  if (wp) return wp.includes(':') ? wp.split(':').slice(1).join(':') : wp
+  if (wp) {
+    const title = wp.includes(':') ? wp.split(':').slice(1).join(':') : wp
+    const lang = wp.includes(':') ? wp.split(':')[0] : 'en'
+    return { title, lang }
+  }
   const qid = poi.tags?.wikidata
-  if (qid) return resolveWikidataSitelink(qid)
-  return null
+  if (qid) {
+    const result = await resolveWikidataSitelink(qid)
+    if (result) return result
+  }
+  return poi.name?.trim() ? { title: poi.name.trim(), lang: 'en' } : null
 }
 
 async function resolveWikidataSitelink(qid) {
   try {
-    const data = await fetchWikidataEntity(qid)
-    return data?.sitelinks?.enwiki ?? null
+    const entity = await fetchWikidataEntity(qid)
+    if (!entity?.sitelinks) return null
+    const sl = entity.sitelinks
+    const preferred = ['enwiki', 'svwiki', 'dewiki', 'frwiki', 'nowiki', 'dawiki', 'fiwiki']
+    for (const key of preferred) {
+      if (sl[key]?.title) {
+        return { title: sl[key].title, lang: key.replace('wiki', '') }
+      }
+    }
+    const anyWiki = Object.entries(sl).find(([k, v]) => k.endsWith('wiki') && !k.includes('common') && v?.title)
+    if (anyWiki) {
+      const [key, val] = anyWiki
+      return { title: val.title, lang: key.replace('wiki', '') }
+    }
+    return null
   } catch {
     return null
   }
 }
 
-async function fetchWikiSummary(title) {
+async function fetchWikiSummary(title, lang = 'en') {
   try {
     const encoded = encodeURIComponent(title.replace(/ /g, '_'))
-    // Use mobile-sections-lead for a fuller lead section than /summary
     const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/mobile-sections-lead/${encoded}`,
+      `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encoded}`,
       { headers: { Accept: 'application/json' } }
     )
-    if (!res.ok) {
-      // Fallback to summary endpoint
-      const res2 = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`,
-        { headers: { Accept: 'application/json' } }
-      )
-      if (!res2.ok) return null
-      const d = await res2.json()
-      return {
-        extract: d.extract || '',
-        thumbnail: d.thumbnail?.source ?? null,
-        url: d.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encoded}`,
-      }
+    if (!res.ok) return null
+    const d = await res.json()
+    return {
+      extract: d.extract || '',
+      thumbnail: d.thumbnail?.source ?? null,
+      url: d.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encoded}`,
     }
-    const data = await res.json()
-    // Strip HTML tags from the lead section text
-    const rawHtml = data.sections?.[0]?.text || ''
-    const extract = stripHtml(rawHtml).trim().slice(0, 800) || data.description || ''
-    const thumbnail = data.image?.urls?.['640'] ?? data.thumb?.url ?? null
-    const url = `https://en.wikipedia.org/wiki/${encoded}`
-    return { extract, thumbnail, url }
   } catch {
     return null
   }
@@ -187,7 +231,7 @@ async function fetchWikidataFacts(qid) {
     if (!data) { wikiCache.set(cacheKey, null); return null }
 
     const facts = []
-    const claims = data.claims || data.statements || {}
+    const claims = data.claims || {}
 
     for (const [pid, label] of Object.entries(WIKIDATA_PROPS)) {
       if (!label) continue
@@ -209,14 +253,15 @@ async function fetchWikidataEntity(qid) {
   const cacheKey = `entity:${qid}`
   if (wikiCache.has(cacheKey)) return wikiCache.get(cacheKey)
   try {
-    const res = await fetch(
-      `https://www.wikidata.org/w/rest.php/wikibase/v0/entities/items/${qid}`,
-      { headers: { Accept: 'application/json' } }
-    )
+    const url =
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}` +
+      `&props=claims|sitelinks&format=json&origin=*`
+    const res = await fetch(url, { headers: { Accept: 'application/json' } })
     if (!res.ok) { wikiCache.set(cacheKey, null); return null }
     const data = await res.json()
-    wikiCache.set(cacheKey, data)
-    return data
+    const entity = data.entities?.[qid]
+    wikiCache.set(cacheKey, entity ?? null)
+    return entity ?? null
   } catch {
     wikiCache.set(cacheKey, null)
     return null
@@ -224,20 +269,19 @@ async function fetchWikidataEntity(qid) {
 }
 
 function extractClaimValue(claim) {
-  // Wikidata REST API v0 format
-  const sv = claim?.value?.content ?? claim?.mainsnak?.datavalue?.value
+  const sv = claim?.mainsnak?.datavalue?.value
   if (sv == null) return null
   if (typeof sv === 'string') return sv
   if (typeof sv === 'number') return String(sv)
-  // Time value: {time: '+1882-00-00T00:00:00Z', ...}
+  // Time: {time: '+1882-00-00T00:00:00Z', ...}
   if (sv.time) {
     const m = sv.time.match(/[+-](\d{4})/)
     return m ? m[1] : null
   }
-  // Quantity: {amount: '+96', unit: ...}
-  if (sv.amount != null) return sv.amount.replace(/^\+/, '') + (sv.unit && sv.unit !== '1' ? '' : '')
-  // Entity id reference (e.g. architect is a person entity)
-  if (sv.id) return sv.id  // best effort — ideally we'd label-resolve but that's another fetch
+  // Quantity: {amount: '+96', ...}
+  if (sv.amount != null) return sv.amount.replace(/^\+/, '')
+  // Entity reference — return the QID; label lookup would need another fetch
+  if (sv.id) return sv.id
   return null
 }
 

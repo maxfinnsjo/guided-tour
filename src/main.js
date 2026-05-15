@@ -137,6 +137,9 @@ async function fetchPOIs(lat, lon) {
     }
     refreshDrawer()
     lastFetchCenter = { lat, lon }
+    const n = loadedPOIs.size
+    statusText.textContent = `${n} place${n !== 1 ? 's' : ''} nearby`
+    setTimeout(() => { statusText.textContent = '' }, 4000)
   } catch (err) {
     statusText.textContent = 'Could not fetch places'
     console.error(err)
@@ -174,6 +177,7 @@ function checkTourProximity(lat, lon) {
 // Phase 1: fast low-accuracy fix (IP/WiFi) — centers the map immediately
 // Phase 2: watchPosition with high-accuracy refines the marker in the background
 let centered = false
+let centeredViaFallback = false
 
 getFastPosition()
   .then(pos => {
@@ -192,8 +196,9 @@ getFastPosition()
   })
   .catch(() => {
     map.setView([51.505, -0.09], 13)
-    statusText.textContent = 'Location unavailable'
+    statusText.textContent = 'Locating via GPS…'
     centered = true
+    centeredViaFallback = true
   })
 
 watchPosition(
@@ -213,8 +218,14 @@ watchPosition(
       userMarker.setLatLng([lat, lon])
     }
 
-    // Don't fetch POIs until the initial map center is set
-    if (!centered) return
+    // Center map on first watchPosition fix if getFastPosition didn't already do it
+    if (!centered || centeredViaFallback) {
+      map.setView([lat, lon], 16)
+      centered = true
+      centeredViaFallback = false
+      statusText.textContent = 'Location found'
+      setTimeout(() => { statusText.textContent = '' }, 3000)
+    }
 
     const shouldFetch =
       !lastFetchCenter ||
