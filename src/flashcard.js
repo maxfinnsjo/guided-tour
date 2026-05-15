@@ -1,3 +1,5 @@
+import { enrichFromWebSearch } from './websearch.js'
+
 const card = document.getElementById('flashcard')
 const fcName = document.getElementById('fc-name')
 const fcType = document.getElementById('fc-type')
@@ -20,6 +22,9 @@ const fcWikiLoading = document.getElementById('fc-wiki-loading')
 const fcWikiThumb = document.getElementById('fc-wiki-thumb')
 const fcWikiExtract = document.getElementById('fc-wiki-extract')
 const fcWikiLink = document.getElementById('fc-wiki-link')
+const fcWebSearch = document.getElementById('fc-web-search')
+const fcWsExtract = document.getElementById('fc-ws-extract')
+const fcWsLink = document.getElementById('fc-ws-link')
 const closeBtn = document.getElementById('flashcard-close')
 
 let faqVisible = false
@@ -71,6 +76,8 @@ export function show(poi) {
   fcWiki.classList.add('hidden')
   fcWikiThumb.classList.add('hidden')
   fcWikiLoading.classList.remove('hidden')
+  fcWebSearch.classList.add('hidden')
+  fcWsExtract.textContent = ''
 
   // FAQ
   const faqs = buildFAQ(poi)
@@ -133,6 +140,13 @@ export function show(poi) {
         }
         fcWiki.classList.remove('hidden')
       }
+      return enrichFromWebSearch(poi, fcWikiLink.href)
+    }).then(result => {
+      if (result) {
+        fcWsExtract.textContent = result.extract
+        fcWsLink.href = result.url
+        fcWebSearch.classList.remove('hidden')
+      }
     })
   })
 
@@ -168,10 +182,15 @@ async function resolveWikidataByName(poi) {
     if (!results.length) { wikiCache.set(cacheKey, null); return }
 
     const type = (poi.type || '').toLowerCase()
+    const notName = r => {
+      const desc = (r.description || '').toLowerCase()
+      return !desc.includes('given name') && !desc.includes('surname') && !desc.includes('family name') && !desc.includes('disambiguation')
+    }
     let best = results.find(r =>
-      type && type !== 'poi' && (r.description || '').toLowerCase().includes(type)
+      notName(r) && type && type !== 'poi' && (r.description || '').toLowerCase().includes(type)
     )
-    if (!best) best = results[0]
+    if (!best) best = results.find(notName)
+    if (!best) best = null
 
     const qid = best?.id
     wikiCache.set(cacheKey, qid ?? null)
@@ -237,6 +256,9 @@ async function fetchWikiSummary(title, lang = 'en') {
     )
     if (!res.ok) return null
     const d = await res.json()
+    if (d.type === 'disambiguation') return null
+    const t = (d.title || '').toLowerCase()
+    if (/\((name|given name|surname|forename)\)/.test(t)) return null
     return {
       extract: d.extract || '',
       thumbnail: d.thumbnail?.source ?? null,
@@ -401,8 +423,29 @@ function stripHtml(html) {
     .trim()
 }
 
+const TYPE_LABELS = {
+  attraction:          'Attraction',
+  museum:              'Museum',
+  artwork:             'Public Artwork',
+  viewpoint:           'Viewpoint',
+  monument:            'Monument',
+  gallery:             'Gallery',
+  zoo:                 'Zoo',
+  theme_park:          'Theme Park',
+  memorial:            'Memorial',
+  castle:              'Castle',
+  ruins:               'Ruins',
+  building:            'Historic Building',
+  archaeological_site: 'Archaeological Site',
+  church:              'Church',
+  place_of_worship:    'Place of Worship',
+  library:             'Library',
+  theatre:             'Theatre',
+  cinema:              'Cinema',
+}
+
 function formatType(type) {
-  return (type || '').replace(/_/g, ' ')
+  return TYPE_LABELS[type] || (type || '').replace(/_/g, ' ')
 }
 
 function descriptionFromTags(tags = {}) {

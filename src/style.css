@@ -232,6 +232,10 @@ button#btn-recenter {
 #fc-wiki-extract { font-size: 0.85rem; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
 #fc-wiki-link { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
 
+#fc-web-search { margin-bottom: 14px; }
+#fc-ws-extract { font-size: 0.85rem; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
+#fc-ws-link { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
+
 #fc-faq { margin-bottom: 14px; }
 #fc-faq h3 { font-size: 0.85rem; margin-bottom: 8px; color: var(--muted); }
 #fc-faq-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
