@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import { fetchNearbyPOIs } from './overpass.js'
-import { distance, watchPosition } from './geo.js'
+import { distance, watchPosition, getAccuratePosition } from './geo.js'
 import { show as showCard } from './flashcard.js'
 import * as tour from './tour.js'
 
@@ -119,7 +119,15 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-let centered = false
+// Get a fresh fix (maximumAge:0) for the initial center, independent of watchPosition
+getAccuratePosition()
+  .then(pos => {
+    const { latitude: lat, longitude: lon } = pos.coords
+    map.setView([lat, lon], 16)
+  })
+  .catch(() => {
+    map.setView([51.505, -0.09], 13)
+  })
 
 watchPosition(
   pos => {
@@ -138,11 +146,6 @@ watchPosition(
       userMarker.setLatLng([lat, lon])
     }
 
-    if (!centered) {
-      map.setView([lat, lon], 16)
-      centered = true
-    }
-
     const shouldFetch =
       !lastFetchCenter ||
       distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon) > REFETCH_DISTANCE
@@ -157,7 +160,6 @@ watchPosition(
   },
   err => {
     statusText.textContent = 'Location unavailable'
-    map.setView([51.505, -0.09], 13)
     console.warn('Geolocation error', err)
   }
 )

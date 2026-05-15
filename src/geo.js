@@ -10,6 +10,17 @@ export function distance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+export function getAccuratePosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000,
+    })
+  })
+}
+
 export function watchPosition(onSuccess, onError) {
   if (!navigator.geolocation) {
     onError(new Error('Geolocation not supported'))
@@ -17,7 +28,7 @@ export function watchPosition(onSuccess, onError) {
   }
   return navigator.geolocation.watchPosition(onSuccess, onError, {
     enableHighAccuracy: true,
-    maximumAge: 5000,
+    maximumAge: 0,
     timeout: 10000,
   })
 }
