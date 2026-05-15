@@ -18,9 +18,9 @@ let userMarker = null
 let poiMarkers = new Map()  // id → marker
 let loadedPOIs = new Map()  // id → poi
 let lastFetchCenter = null
-const FETCH_RADIUS = 600    // metres to query
-const REFETCH_DISTANCE = 200 // re-query when user moves this far from last fetch center
-const PROXIMITY_ALERT = 80  // metres — surface flash card
+const FETCH_RADIUS = 600
+const REFETCH_DISTANCE = 200
+const PROXIMITY_ALERT = 80
 
 // ── UI refs ───────────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ async function fetchPOIs(lat, lon) {
   }
 }
 
-// ── Proximity check (free roam) ────────────────────────────────────────────────
+// ── Proximity checks ──────────────────────────────────────────────────────────
 
 let lastAlertedId = null
 
@@ -106,8 +106,6 @@ function checkProximity(lat, lon) {
     }
   }
 }
-
-// ── Tour proximity check ───────────────────────────────────────────────────────
 
 function checkTourProximity(lat, lon) {
   const poi = tour.getCurrentPOI()
@@ -159,17 +157,15 @@ watchPosition(
   },
   err => {
     statusText.textContent = 'Location unavailable'
-    // Fall back to a default view so the map still renders
     map.setView([51.505, -0.09], 13)
     console.warn('Geolocation error', err)
   }
 )
 
-// ── Tour POI markers (after import) ───────────────────────────────────────────
+// ── Tour integration ──────────────────────────────────────────────────────────
 
-// When tour starts, add markers for tour POIs that have coords
-const origStart = document.getElementById('tour-start')
-origStart.addEventListener('click', () => {
+// Add markers when tour starts
+document.addEventListener('tour:started', () => {
   for (const poi of tour.getPOIs()) {
     if (poi.lat && poi.lon) {
       loadedPOIs.set(poi.id, poi)
@@ -177,6 +173,23 @@ origStart.addEventListener('click', () => {
     }
   }
 })
+
+// Coordinate pick mode: hides tour panel, waits for map click, calls back with lat/lon
+function enterPickMode(cb) {
+  const hint = document.createElement('div')
+  hint.id = 'pick-hint'
+  hint.textContent = 'Tap the map to place the POI'
+  document.getElementById('app').appendChild(hint)
+
+  const handler = e => {
+    map.off('click', handler)
+    hint.remove()
+    cb(e.latlng.lat, e.latlng.lng)
+  }
+  map.on('click', handler)
+}
+
+tour.setPickModeHandler(enterPickMode)
 
 // ── Service worker ────────────────────────────────────────────────────────────
 

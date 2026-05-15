@@ -5,9 +5,15 @@ const fcDesc = document.getElementById('fc-desc')
 const fcFaq = document.getElementById('fc-faq')
 const fcFaqList = document.getElementById('fc-faq-list')
 const fcFaqToggle = document.getElementById('fc-faq-toggle')
+const fcWiki = document.getElementById('fc-wiki')
+const fcWikiLoading = document.getElementById('fc-wiki-loading')
+const fcWikiThumb = document.getElementById('fc-wiki-thumb')
+const fcWikiExtract = document.getElementById('fc-wiki-extract')
+const fcWikiLink = document.getElementById('fc-wiki-link')
 const closeBtn = document.getElementById('flashcard-close')
 
 let faqVisible = false
+const wikiCache = new Map()
 
 closeBtn.addEventListener('click', hide)
 fcFaqToggle.addEventListener('click', () => {
@@ -34,6 +40,25 @@ export function show(poi) {
   faqVisible = false
   fcFaq.classList.add('hidden')
   fcFaqToggle.textContent = 'Show FAQ'
+
+  // Reset wiki section, kick off async enrichment
+  fcWiki.classList.add('hidden')
+  fcWikiThumb.classList.add('hidden')
+  fcWikiLoading.classList.remove('hidden')
+
+  enrichFromWiki(poi).then(summary => {
+    fcWikiLoading.classList.add('hidden')
+    if (summary && summary.extract) {
+      fcWikiExtract.textContent = summary.extract
+      fcWikiLink.href = summary.url
+      if (summary.thumbnail) {
+        fcWikiThumb.src = summary.thumbnail
+        fcWikiThumb.classList.remove('hidden')
+      }
+      fcWiki.classList.remove('hidden')
+    }
+  })
+
   card.classList.remove('hidden')
 }
 
@@ -41,8 +66,64 @@ export function hide() {
   card.classList.add('hidden')
 }
 
+// ── Wikipedia enrichment ──────────────────────────────────────────────────────
+
+async function enrichFromWiki(poi) {
+  const title = await resolveWikiTitle(poi)
+  if (!title) return null
+  if (wikiCache.has(title)) return wikiCache.get(title)
+  const summary = await fetchWikiSummary(title)
+  wikiCache.set(title, summary)
+  return summary
+}
+
+async function resolveWikiTitle(poi) {
+  const wp = poi.tags?.wikipedia
+  if (wp) return wp.includes(':') ? wp.split(':').slice(1).join(':') : wp
+
+  const qid = poi.tags?.wikidata
+  if (qid) return resolveWikidataSitelink(qid)
+
+  return null
+}
+
+async function resolveWikidataSitelink(qid) {
+  try {
+    const res = await fetch(
+      `https://www.wikidata.org/w/rest.php/wikibase/v0/entities/items/${qid}`,
+      { headers: { Accept: 'application/json' } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.sitelinks?.enwiki ?? null
+  } catch {
+    return null
+  }
+}
+
+async function fetchWikiSummary(title) {
+  try {
+    const encoded = encodeURIComponent(title.replace(/ /g, '_'))
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`,
+      { headers: { Accept: 'application/json' } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      extract: data.extract || '',
+      thumbnail: data.thumbnail?.source ?? null,
+      url: data.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encoded}`,
+    }
+  } catch {
+    return null
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function formatType(type) {
-  return type.replace(/_/g, ' ')
+  return (type || '').replace(/_/g, ' ')
 }
 
 function descriptionFromTags(tags = {}) {

@@ -31,6 +31,12 @@
         <h2 id="fc-name"></h2>
         <p id="fc-type"></p>
         <p id="fc-desc"></p>
+        <div id="fc-wiki-loading" class="hidden">Loading summary…</div>
+        <div id="fc-wiki" class="hidden">
+          <img id="fc-wiki-thumb" class="hidden" src="" alt="" />
+          <p id="fc-wiki-extract"></p>
+          <a id="fc-wiki-link" href="" target="_blank" rel="noopener">Read on Wikipedia →</a>
+        </div>
         <div id="fc-faq" class="hidden">
           <h3>FAQ</h3>
           <ul id="fc-faq-list"></ul>
@@ -45,12 +51,48 @@
         <h2>Tour</h2>
         <button id="tour-close">✕</button>
       </div>
+
+      <!-- Saved tours -->
+      <div id="tour-name-row">
+        <input id="tour-name-input" type="text" placeholder="Tour name…" autocomplete="off" />
+        <button id="tour-save-btn">Save</button>
+      </div>
+      <div id="tour-saved-row">
+        <select id="tour-saved-select"><option value="">— load saved tour —</option></select>
+        <button id="tour-delete-btn" class="danger">Delete</button>
+      </div>
+      <div id="tour-transfer-row">
+        <button id="tour-export-btn">Export JSON</button>
+        <label id="tour-import-json-label">Import JSON
+          <input type="file" id="tour-import-json" accept=".json" />
+        </label>
+      </div>
+
+      <!-- Add POI manually -->
+      <details id="tour-add-section">
+        <summary>+ Add a POI</summary>
+        <form id="tour-add-form" autocomplete="off">
+          <input id="add-poi-name" type="text" placeholder="Name *" required />
+          <div id="add-poi-coords">
+            <input id="add-poi-lat" type="text" placeholder="Latitude" inputmode="decimal" />
+            <input id="add-poi-lon" type="text" placeholder="Longitude" inputmode="decimal" />
+          </div>
+          <button type="button" id="add-poi-pick">Pick from map</button>
+          <input id="add-poi-type" type="text" placeholder="Type (e.g. museum, monument)" />
+          <textarea id="add-poi-desc" placeholder="Notes / description" rows="3"></textarea>
+          <input id="add-poi-wiki" type="text" placeholder="Wikipedia article title (optional)" />
+          <button type="submit">Add to tour</button>
+        </form>
+      </details>
+
+      <!-- File import (existing) -->
       <div id="tour-import">
-        <label>Import POIs (JSON or CSV)
+        <label>Import POIs from CSV / JSON file
           <input type="file" id="tour-file" accept=".json,.csv" />
         </label>
-        <button id="tour-start" class="disabled" disabled>Start Tour</button>
       </div>
+
+      <button id="tour-start" class="disabled" disabled>Start Tour</button>
       <ol id="tour-list"></ol>
     </div>
 
