@@ -119,20 +119,35 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-// Get a fresh fix (maximumAge:0) for the initial center, independent of watchPosition
+// initialized gates watchPosition so it doesn't fire at a stale position
+// before getAccuratePosition has set the map view and fetched POIs
+let initialized = false
+
 getAccuratePosition()
   .then(pos => {
     const { latitude: lat, longitude: lon } = pos.coords
     map.setView([lat, lon], 16)
+    userMarker = L.circleMarker([lat, lon], {
+      radius: 7,
+      color: '#fff',
+      fillColor: '#4a9eff',
+      fillOpacity: 1,
+      weight: 2,
+    }).addTo(map)
+    fetchPOIs(lat, lon)
+    initialized = true
   })
   .catch(() => {
     map.setView([51.505, -0.09], 13)
+    statusText.textContent = 'Location unavailable'
+    initialized = true
   })
 
 watchPosition(
   pos => {
+    if (!initialized) return
+
     const { latitude: lat, longitude: lon } = pos.coords
-    statusText.textContent = `${loadedPOIs.size} places nearby`
 
     if (!userMarker) {
       userMarker = L.circleMarker([lat, lon], {
@@ -146,6 +161,8 @@ watchPosition(
       userMarker.setLatLng([lat, lon])
     }
 
+    statusText.textContent = `${loadedPOIs.size} places nearby`
+
     const shouldFetch =
       !lastFetchCenter ||
       distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon) > REFETCH_DISTANCE
@@ -158,10 +175,7 @@ watchPosition(
       checkProximity(lat, lon)
     }
   },
-  err => {
-    statusText.textContent = 'Location unavailable'
-    console.warn('Geolocation error', err)
-  }
+  err => { console.warn('Geolocation watch error', err) }
 )
 
 // ── Tour integration ──────────────────────────────────────────────────────────
