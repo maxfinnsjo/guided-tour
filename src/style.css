@@ -155,18 +155,34 @@ button#btn-recenter {
   border-top-left-radius: var(--radius);
   border-top-right-radius: var(--radius);
   z-index: 900;
-  padding: 20px 20px 32px;
+  padding: 12px 20px 32px;
   box-shadow: 0 -4px 24px #00000060;
   transition: transform 0.25s ease;
+}
+#flashcard::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  background: #ffffff30;
+  border-radius: 2px;
+  margin: 0 auto 14px;
 }
 #flashcard.hidden { transform: translateY(110%); }
 #flashcard-close {
   position: absolute;
-  top: 12px; right: 14px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1rem;
+  top: 10px; right: 12px;
+  background: #ffffff18;
+  color: var(--text);
+  font-size: 0.85rem;
   padding: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 #fc-name { font-size: 1.2rem; margin-bottom: 4px; padding-right: 24px; }
 #fc-type { font-size: 0.78rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }

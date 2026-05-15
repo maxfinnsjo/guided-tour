@@ -1,7 +1,7 @@
 import L from 'leaflet'
 import { fetchNearbyPOIs } from './overpass.js'
 import { distance, watchPosition, getFastPosition } from './geo.js'
-import { show as showCard } from './flashcard.js'
+import { show as showCard, hide as hideCard } from './flashcard.js'
 import * as tour from './tour.js'
 
 // ── Map setup ────────────────────────────────────────────────────────────────
@@ -55,6 +55,12 @@ recenterBtn.addEventListener('click', () => {
 })
 
 poiDrawerHandle.addEventListener('click', () => {
+  const flashcard = document.getElementById('flashcard')
+  if (!flashcard.classList.contains('hidden')) {
+    hideCard()
+    setTimeout(() => poiDrawer.classList.add('open'), 260)
+    return
+  }
   poiDrawer.classList.toggle('open')
 })
 
@@ -107,8 +113,8 @@ function refreshDrawer() {
       const poi = loadedPOIs.get(li.dataset.id)
       if (!poi) return
       map.setView([poi.lat, poi.lon], 17)
-      showCard(poi)
       poiDrawer.classList.remove('open')
+      setTimeout(() => showCard(poi), 260)
     })
   })
 }
@@ -240,11 +246,11 @@ document.addEventListener('tour:started', () => {
 // POI added/loaded from tour — show on map immediately
 document.addEventListener('tour:poi-added', e => {
   const poi = e.detail
-  if (poi.lat && poi.lon) {
-    loadedPOIs.set(poi.id, poi)
+  loadedPOIs.set(poi.id, poi)
+  if (poi.lat != null && poi.lon != null && poi.lat !== '' && poi.lon !== '') {
     addPOIMarker(poi)
-    refreshDrawer()
   }
+  refreshDrawer()
 })
 
 // Coordinate pick mode: hides tour panel, waits for map click, calls back with lat/lon

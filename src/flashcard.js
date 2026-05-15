@@ -37,7 +37,7 @@ export function show(poi) {
   const desc = poi.desc
     || t.description || t['description:en']
     || descriptionFromTags(t)
-  fcDesc.textContent = desc
+  fcDesc.textContent = desc || 'No description available.'
 
   // OSM note / inscription (synchronous — shown immediately)
   const note = t.note || t['note:en'] || ''

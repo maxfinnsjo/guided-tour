@@ -191,6 +191,7 @@ importJson.addEventListener('change', async e => {
     renderList()
     enableStart()
     saveTourState()
+    pois.forEach(poi => document.dispatchEvent(new CustomEvent('tour:poi-added', { detail: poi })))
   } catch (err) {
     alert(`Could not import: ${err.message}`)
   }
@@ -205,6 +206,7 @@ fileInput.addEventListener('change', async e => {
     renderList()
     enableStart()
     saveTourState()
+    pois.forEach(poi => document.dispatchEvent(new CustomEvent('tour:poi-added', { detail: poi })))
   } catch (err) {
     alert(`Could not parse file: ${err.message}`)
   }
@@ -374,9 +376,9 @@ function parseCSV(text) {
 
 refreshSavedSelect()
 
-// Auto-load the most recently updated saved tour
+// Auto-load the most recently updated saved tour after main.js listeners are ready
 const _saved = loadSavedTours()
 if (_saved.length) {
   const _last = _saved.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0]
-  loadTour(_last.name)
+  setTimeout(() => loadTour(_last.name), 0)
 }
