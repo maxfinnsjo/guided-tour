@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import { fetchNearbyPOIs } from './overpass.js'
-import { distance, watchPosition, getAccuratePosition } from './geo.js'
+import { distance, watchPosition, getFastPosition } from './geo.js'
 import { show as showCard } from './flashcard.js'
 import * as tour from './tour.js'
 
@@ -119,11 +119,11 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-// initialized gates watchPosition so it doesn't fire at a stale position
-// before getAccuratePosition has set the map view and fetched POIs
-let initialized = false
+// Phase 1: fast low-accuracy fix (IP/WiFi) — centers the map immediately
+// Phase 2: watchPosition with high-accuracy refines the marker in the background
+let centered = false
 
-getAccuratePosition()
+getFastPosition()
   .then(pos => {
     const { latitude: lat, longitude: lon } = pos.coords
     map.setView([lat, lon], 16)
@@ -135,18 +135,16 @@ getAccuratePosition()
       weight: 2,
     }).addTo(map)
     fetchPOIs(lat, lon)
-    initialized = true
+    centered = true
   })
   .catch(() => {
     map.setView([51.505, -0.09], 13)
     statusText.textContent = 'Location unavailable'
-    initialized = true
+    centered = true
   })
 
 watchPosition(
   pos => {
-    if (!initialized) return
-
     const { latitude: lat, longitude: lon } = pos.coords
 
     if (!userMarker) {
@@ -162,6 +160,9 @@ watchPosition(
     }
 
     statusText.textContent = `${loadedPOIs.size} places nearby`
+
+    // Don't fetch POIs until the initial map center is set
+    if (!centered) return
 
     const shouldFetch =
       !lastFetchCenter ||

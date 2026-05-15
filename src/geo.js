@@ -10,13 +10,14 @@ export function distance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-export function getAccuratePosition() {
+// Fast, low-accuracy fix for initial map display (IP/WiFi — resolves in ~1s)
+export function getFastPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      maximumAge: 3000,
-      timeout: 10000,
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+      timeout: 5000,
     })
   })
 }
