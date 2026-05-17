@@ -1,4 +1,4 @@
-import { enrichFromWebSearch } from './websearch.js'
+import { enrichFromWebSearch, reverseGeocode, fetchCommonsImage } from './websearch.js'
 
 const card = document.getElementById('flashcard')
 const fcName = document.getElementById('fc-name')
@@ -20,6 +20,7 @@ const fcFaqToggle = document.getElementById('fc-faq-toggle')
 const fcWiki = document.getElementById('fc-wiki')
 const fcWikiLoading = document.getElementById('fc-wiki-loading')
 const fcWikiThumb = document.getElementById('fc-wiki-thumb')
+const fcWikiCredit = document.getElementById('fc-wiki-credit')
 const fcWikiExtract = document.getElementById('fc-wiki-extract')
 const fcWikiLink = document.getElementById('fc-wiki-link')
 const fcWebSearch = document.getElementById('fc-web-search')
@@ -47,7 +48,24 @@ export function show(poi) {
   const desc = poi.desc
     || t.description || t['description:en']
     || descriptionFromTags(t)
-  fcDesc.textContent = desc || 'No description available.'
+  fcDesc.textContent = desc || ''
+
+  if (!desc) {
+    const [osmType, osmNumId] = (poi.id || '').split('/')
+    const osmUrl = osmNumId ? `https://www.openstreetmap.org/${osmType}/${osmNumId}` : null
+    reverseGeocode(poi.lat, poi.lon).then(addr => {
+      const parts = []
+      if (addr?.road) parts.push(addr.road)
+      if (addr?.suburb) parts.push(addr.suburb)
+      if (addr?.city) parts.push(addr.city)
+      const addrStr = parts.join(', ')
+      let html = 'No description available for this location.'
+      if (addrStr) html += ` Located at ${addrStr}.`
+      html += ' This is all the information we have right now.'
+      if (osmUrl) html += ` <a href="${osmUrl}" target="_blank" rel="noopener">View on OpenStreetMap →</a>`
+      fcDesc.innerHTML = html
+    })
+  }
 
   // OSM note / inscription (synchronous — shown immediately)
   const note = t.note || t['note:en'] || ''
@@ -75,6 +93,8 @@ export function show(poi) {
   fcFactsList.innerHTML = ''
   fcWiki.classList.add('hidden')
   fcWikiThumb.classList.add('hidden')
+  fcWikiCredit.classList.add('hidden')
+  fcWikiCredit.textContent = ''
   fcWikiLoading.classList.remove('hidden')
   fcWebSearch.classList.add('hidden')
   fcWsExtract.textContent = ''
@@ -140,6 +160,19 @@ export function show(poi) {
         }
         fcWiki.classList.remove('hidden')
       }
+      if (!summary?.thumbnail && poi.name) {
+        fetchCommonsImage(poi.name).then(img => {
+          if (img) {
+            fcWikiThumb.src = img.url
+            fcWikiThumb.classList.remove('hidden')
+            fcWiki.classList.remove('hidden')
+            if (img.credit || img.license) {
+              fcWikiCredit.textContent = [img.credit, img.license].filter(Boolean).join(' · ')
+              fcWikiCredit.classList.remove('hidden')
+            }
+          }
+        })
+      }
       return enrichFromWebSearch(poi, fcWikiLink.href)
     }).then(result => {
       if (result) {
@@ -160,7 +193,7 @@ export function hide() {
 // ── Wikipedia enrichment ──────────────────────────────────────────────────────
 
 async function resolveWikidataByName(poi) {
-  if (poi.tags?.wikidata || poi.tags?.wikipedia) return
+  if (poi.tags?.wikidata) return
   const name = poi.name?.trim()
   if (!name) return
 

@@ -187,6 +187,7 @@ button#btn-recenter {
 #fc-name { font-size: 1.2rem; margin-bottom: 4px; padding-right: 24px; }
 #fc-type { font-size: 0.78rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
 #fc-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
+#fc-desc a { color: var(--accent); text-decoration: none; }
 
 /* OSM extras */
 #fc-osm { margin-bottom: 12px; }
@@ -228,7 +229,8 @@ button#btn-recenter {
 /* Wikipedia section */
 #fc-wiki-loading { font-size: 0.78rem; color: var(--muted); font-style: italic; margin-bottom: 10px; }
 #fc-wiki { margin-bottom: 14px; }
-#fc-wiki-thumb { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+#fc-wiki-thumb { width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 4px; }
+#fc-wiki-credit { font-size: 0.7rem; color: var(--muted); margin-bottom: 8px; }
 #fc-wiki-extract { font-size: 0.85rem; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
 #fc-wiki-link { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
 

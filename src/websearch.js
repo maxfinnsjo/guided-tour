@@ -6,7 +6,7 @@ function quantiseKey(lat, lon) {
   return `${Math.round(lat * 1000) / 1000},${Math.round(lon * 1000) / 1000}`
 }
 
-async function reverseGeocode(lat, lon) {
+export async function reverseGeocode(lat, lon) {
   if (lat == null || lon == null) return null
   const key = quantiseKey(lat, lon)
   if (geocodeCache.has(key)) return geocodeCache.get(key)
@@ -76,6 +76,29 @@ async function fetchWikipediaSummary(title) {
     const data = await res.json()
     if (!data.extract) return null
     return { extract: data.extract, url: data.content_urls?.desktop?.page || '' }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchCommonsImage(name) {
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search` +
+    `&gsrsearch=${encodeURIComponent(name)}&gsrnamespace=6&prop=imageinfo` +
+    `&iiprop=url|extmetadata&iilimit=1&format=json&origin=*`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    const pages = Object.values(data.query?.pages || {})
+    if (!pages.length) return null
+    const info = pages[0].imageinfo?.[0]
+    if (!info?.url) return null
+    const meta = info.extmetadata || {}
+    return {
+      url: info.url,
+      credit: meta.Artist?.value?.replace(/<[^>]+>/g, '') || null,
+      license: meta.LicenseShortName?.value || null,
+    }
   } catch {
     return null
   }
