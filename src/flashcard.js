@@ -19,6 +19,7 @@ const fcFaqList = document.getElementById('fc-faq-list')
 const fcFaqToggle = document.getElementById('fc-faq-toggle')
 const fcWiki = document.getElementById('fc-wiki')
 const fcWikiLoading = document.getElementById('fc-wiki-loading')
+const fcImageWrap = document.getElementById('fc-image-wrap')
 const fcWikiThumb = document.getElementById('fc-wiki-thumb')
 const fcWikiCredit = document.getElementById('fc-wiki-credit')
 const fcWikiExtract = document.getElementById('fc-wiki-extract')
@@ -26,28 +27,94 @@ const fcWikiLink = document.getElementById('fc-wiki-link')
 const fcWebSearch = document.getElementById('fc-web-search')
 const fcWsExtract = document.getElementById('fc-ws-extract')
 const fcWsLink = document.getElementById('fc-ws-link')
+const fcImgToggle = document.getElementById('fc-img-toggle')
+const fcNotesDisplay = document.getElementById('fc-notes-display')
+const fcNotesInput = document.getElementById('fc-notes-input')
+const fcNotesSave = document.getElementById('fc-notes-save')
+const fcNotesClear = document.getElementById('fc-notes-clear')
 const closeBtn = document.getElementById('flashcard-close')
 
+const NOTES_KEY = 'guided-tour-notes-v1'
+
 let faqVisible = false
-const wikiCache = new Map()  // keyed by wiki title or `wikidata:QID`
+let imageVisible = false
+let currentPoiId = null
+const wikiCache = new Map()
+
+// ── Notes storage ─────────────────────────────────────────────────────────────
+
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}') } catch { return {} }
+}
+
+function saveNotes(notes) {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)) } catch {}
+}
+
+function getNoteForPoi(id) {
+  return loadNotes()[id] || ''
+}
+
+function setNoteForPoi(id, text) {
+  const notes = loadNotes()
+  if (text.trim()) notes[id] = text.trim()
+  else delete notes[id]
+  saveNotes(notes)
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
 
 closeBtn.addEventListener('click', hide)
+
 fcFaqToggle.addEventListener('click', () => {
   faqVisible = !faqVisible
   fcFaq.classList.toggle('hidden', !faqVisible)
   fcFaqToggle.textContent = faqVisible ? 'Hide FAQ' : 'Show FAQ'
 })
 
+fcImgToggle.addEventListener('click', () => {
+  imageVisible = !imageVisible
+  fcImageWrap.classList.toggle('hidden', !imageVisible)
+  fcImgToggle.classList.toggle('active', imageVisible)
+})
+
+fcNotesSave.addEventListener('click', () => {
+  if (!currentPoiId) return
+  const text = fcNotesInput.value
+  setNoteForPoi(currentPoiId, text)
+  renderNotes(text.trim())
+})
+
+fcNotesClear.addEventListener('click', () => {
+  if (!currentPoiId) return
+  setNoteForPoi(currentPoiId, '')
+  fcNotesInput.value = ''
+  renderNotes('')
+})
+
+function renderNotes(text) {
+  if (text) {
+    fcNotesDisplay.textContent = text
+    fcNotesDisplay.classList.remove('hidden')
+    fcNotesClear.classList.remove('hidden')
+    fcNotesInput.value = text
+  } else {
+    fcNotesDisplay.classList.add('hidden')
+    fcNotesClear.classList.add('hidden')
+    fcNotesInput.value = ''
+  }
+}
+
+// ── Show ──────────────────────────────────────────────────────────────────────
+
 export function show(poi) {
   const t = poi.tags || {}
+  currentPoiId = poi.id || `${poi.lat},${poi.lon}`
 
   fcName.textContent = poi.name
   fcType.textContent = formatType(poi.type)
 
-  // Best available description: explicit desc > OSM description tag > tag-derived
-  const desc = poi.desc
-    || t.description || t['description:en']
-    || descriptionFromTags(t)
+  const desc = poi.desc || t.description || t['description:en'] || descriptionFromTags(t)
   fcDesc.textContent = desc || ''
 
   if (!desc) {
@@ -59,22 +126,19 @@ export function show(poi) {
       if (addr?.suburb) parts.push(addr.suburb)
       if (addr?.city) parts.push(addr.city)
       const addrStr = parts.join(', ')
-      let html = 'No description available for this location.'
+      let html = 'No description available.'
       if (addrStr) html += ` Located at ${addrStr}.`
-      html += ' This is all the information we have right now.'
       if (osmUrl) html += ` <a href="${osmUrl}" target="_blank" rel="noopener">View on OpenStreetMap →</a>`
       fcDesc.innerHTML = html
     })
   }
 
-  // OSM note / inscription (synchronous — shown immediately)
   const note = t.note || t['note:en'] || ''
   const inscription = t.inscription || t['inscription:en'] || ''
   fcOsmNote.textContent = note ? `Note: ${note}` : ''
   fcOsmInscription.textContent = inscription ? `Inscription: ${inscription}` : ''
   fcOsm.classList.toggle('hidden', !note && !inscription)
 
-  // Basic facts (synchronous — from OSM tags)
   const basics = buildBasicFacts(t)
   if (basics.length) {
     fcBasicsList.innerHTML = basics
@@ -92,12 +156,22 @@ export function show(poi) {
   fcFacts.classList.add('hidden')
   fcFactsList.innerHTML = ''
   fcWiki.classList.add('hidden')
-  fcWikiThumb.classList.add('hidden')
-  fcWikiCredit.classList.add('hidden')
-  fcWikiCredit.textContent = ''
   fcWikiLoading.classList.remove('hidden')
   fcWebSearch.classList.add('hidden')
   fcWsExtract.textContent = ''
+
+  // Reset image
+  imageVisible = false
+  fcImageWrap.classList.add('hidden')
+  fcImgToggle.classList.remove('active', 'hidden')
+  fcImgToggle.classList.add('hidden')
+  fcWikiThumb.src = ''
+  fcWikiCredit.textContent = ''
+  fcWikiCredit.classList.add('hidden')
+
+  // Notes
+  const existingNote = getNoteForPoi(currentPoiId)
+  renderNotes(existingNote)
 
   // FAQ
   const faqs = buildFAQ(poi)
@@ -113,7 +187,6 @@ export function show(poi) {
   fcFaq.classList.add('hidden')
   fcFaqToggle.textContent = 'Show FAQ'
 
-  // Resolve Wikidata QID by name if not already tagged, then enrich
   resolveWikidataByName(poi).then(() => {
     const qid = poi.tags?.wikidata
     if (qid) {
@@ -134,12 +207,12 @@ export function show(poi) {
         }
         if (sheet.people && sheet.people.length) {
           fcSheetPeople.innerHTML = sheet.people.map(p => {
-            const dates = [p.born, p.died].filter(Boolean)
-            const datesStr = dates.length
-              ? (p.born && p.died ? `${p.born} – ${p.died}` : p.born ? `b. ${p.born}` : `d. ${p.died}`)
-              : ''
+            const datesStr = p.born && p.died
+              ? `${p.born}–${p.died}`
+              : p.born ? `b. ${p.born}` : p.died ? `d. ${p.died}` : ''
             return `<li>
-              <span class="person-name">${p.name}</span><span class="person-role">${p.role}</span>
+              <span class="person-name">${p.name}</span>
+              <span class="person-role">${p.role}</span>
               ${datesStr ? `<span class="person-dates">${datesStr}</span>` : ''}
             </li>`
           }).join('')
@@ -154,23 +227,14 @@ export function show(poi) {
       if (summary && summary.extract) {
         fcWikiExtract.textContent = summary.extract
         fcWikiLink.href = summary.url
-        if (summary.thumbnail) {
-          fcWikiThumb.src = summary.thumbnail
-          fcWikiThumb.classList.remove('hidden')
-        }
         fcWiki.classList.remove('hidden')
       }
-      if (!summary?.thumbnail && poi.name) {
+      // Image handling — show toggle button when an image is available
+      if (summary?.thumbnail) {
+        setThumbImage(summary.thumbnail, null, null)
+      } else if (poi.name) {
         fetchCommonsImage(poi.name).then(img => {
-          if (img) {
-            fcWikiThumb.src = img.url
-            fcWikiThumb.classList.remove('hidden')
-            fcWiki.classList.remove('hidden')
-            if (img.credit || img.license) {
-              fcWikiCredit.textContent = [img.credit, img.license].filter(Boolean).join(' · ')
-              fcWikiCredit.classList.remove('hidden')
-            }
-          }
+          if (img) setThumbImage(img.url, img.credit, img.license)
         })
       }
       return enrichFromWebSearch(poi, fcWikiLink.href)
@@ -184,6 +248,15 @@ export function show(poi) {
   })
 
   card.classList.remove('hidden')
+}
+
+function setThumbImage(url, credit, license) {
+  fcWikiThumb.src = url
+  if (credit || license) {
+    fcWikiCredit.textContent = [credit, license].filter(Boolean).join(' · ')
+    fcWikiCredit.classList.remove('hidden')
+  }
+  fcImgToggle.classList.remove('hidden')
 }
 
 export function hide() {
@@ -217,17 +290,15 @@ async function resolveWikidataByName(poi) {
     const type = (poi.type || '').toLowerCase()
     const notName = r => {
       const desc = (r.description || '').toLowerCase()
-      return !desc.includes('given name') && !desc.includes('surname') && !desc.includes('family name') && !desc.includes('disambiguation')
+      return !desc.includes('given name') && !desc.includes('surname') &&
+             !desc.includes('family name') && !desc.includes('disambiguation')
     }
     let best = results.find(r =>
       notName(r) && type && type !== 'poi' && (r.description || '').toLowerCase().includes(type)
     )
     if (!best) best = results.find(notName)
-    if (!best) best = null
-
     if (!best?.id) { wikiCache.set(cacheKey, null); return }
 
-    // Validate the match is geographically plausible (within 50km) if the POI has coordinates
     const qid = best.id
     if (poi.lat != null && poi.lon != null) {
       try {
@@ -284,9 +355,7 @@ async function resolveWikidataSitelink(qid) {
     const sl = entity.sitelinks
     const preferred = ['enwiki', 'svwiki', 'dewiki', 'frwiki', 'nowiki', 'dawiki', 'fiwiki']
     for (const key of preferred) {
-      if (sl[key]?.title) {
-        return { title: sl[key].title, lang: key.replace('wiki', '') }
-      }
+      if (sl[key]?.title) return { title: sl[key].title, lang: key.replace('wiki', '') }
     }
     const anyWiki = Object.entries(sl).find(([k, v]) => k.endsWith('wiki') && !k.includes('common') && v?.title)
     if (anyWiki) {
@@ -329,14 +398,13 @@ const WIKIDATA_PROPS = {
   P576:  'Dissolved',
   P149:  'Architectural style',
   P2048: 'Height',
-  P18:   null,     // image — used for thumbnail fallback, not shown as fact
+  P18:   null,
   P856:  'Website',
   P1082: 'Population',
   P127:  'Owned by',
   P466:  'Occupant',
 }
 
-// People-related properties for the fact sheet
 const PEOPLE_PROPS = {
   P84:  'Architect',
   P112: 'Founder',
@@ -351,53 +419,36 @@ async function fetchPersonDates(qid) {
   if (!entity) return null
   const claims = entity.claims || {}
   const label = entity.labels?.en?.value || null
-
-  const extractYear = entries => {
-    if (!entries || !entries.length) return null
-    return extractClaimValue(entries[0])
-  }
-
-  return {
-    name: label,
-    born: extractYear(claims.P569),
-    died: extractYear(claims.P570),
-  }
+  const extractYear = entries => entries?.length ? extractClaimValue(entries[0]) : null
+  return { name: label, born: extractYear(claims.P569), died: extractYear(claims.P570) }
 }
 
 async function buildPeopleSheet(claims) {
   const seen = new Set()
   const tasks = []
-
   for (const [pid, role] of Object.entries(PEOPLE_PROPS)) {
     const entries = claims[pid]
     if (!entries) continue
     for (const entry of entries) {
-      const sv = entry?.mainsnak?.datavalue?.value
-      const personQid = sv?.id
+      const personQid = entry?.mainsnak?.datavalue?.value?.id
       if (!personQid || seen.has(personQid)) continue
       seen.add(personQid)
       tasks.push({ qid: personQid, role })
     }
   }
-
   if (!tasks.length) return []
-
   const results = await Promise.all(
     tasks.map(t => fetchPersonDates(t.qid).then(p => p ? { ...p, role: t.role } : null))
   )
-
   return results.filter(p => p && p.name)
 }
 
 async function buildFactSheet(qid) {
   const entity = await fetchWikidataEntity(qid)
   if (!entity) return { year: null, people: [] }
-
   const claims = entity.claims || {}
-
   const yearEntry = claims.P571 || claims.P1319 || null
   const year = yearEntry ? extractClaimValue(yearEntry[0]) : null
-
   const people = await buildPeopleSheet(claims)
   return { year, people }
 }
@@ -406,22 +457,18 @@ async function fetchWikidataFacts(qid) {
   if (!qid) return null
   const cacheKey = `wikidata:${qid}`
   if (wikiCache.has(cacheKey)) return wikiCache.get(cacheKey)
-
   try {
     const data = await fetchWikidataEntity(qid)
     if (!data) { wikiCache.set(cacheKey, null); return null }
-
     const facts = []
     const claims = data.claims || {}
-
     for (const [pid, label] of Object.entries(WIKIDATA_PROPS)) {
       if (!label) continue
       const entries = claims[pid]
-      if (!entries || !entries.length) continue
+      if (!entries?.length) continue
       const val = extractClaimValue(entries[0])
       if (val) facts.push({ label, value: val })
     }
-
     wikiCache.set(cacheKey, facts.length ? facts : null)
     return facts.length ? facts : null
   } catch {
@@ -454,26 +501,16 @@ function extractClaimValue(claim) {
   if (sv == null) return null
   if (typeof sv === 'string') return sv
   if (typeof sv === 'number') return String(sv)
-  // Time: {time: '+1882-00-00T00:00:00Z', ...}
   if (sv.time) {
     const m = sv.time.match(/[+-](\d{4})/)
     return m ? m[1] : null
   }
-  // Quantity: {amount: '+96', ...}
   if (sv.amount != null) return sv.amount.replace(/^\+/, '')
-  // Entity reference — return the QID; label lookup would need another fetch
   if (sv.id) return sv.id
   return null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function stripHtml(html) {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 const TYPE_LABELS = {
   attraction:          'Attraction',
@@ -512,7 +549,6 @@ function descriptionFromTags(tags = {}) {
 function buildBasicFacts(tags = {}) {
   const facts = []
   const add = (label, value) => { if (value) facts.push({ label, value }) }
-
   add('Year built',   tags.start_date || tags.year_of_construction || tags.construction_date)
   add('Opened',       tags.opening_date)
   add('Architect',    tags.architect)
@@ -520,7 +556,6 @@ function buildBasicFacts(tags = {}) {
   add('Operator',     tags.operator)
   add('Denomination', tags.denomination)
   add('Heritage',     tags.heritage_operator || tags['heritage:operator'])
-
   return facts
 }
 
@@ -530,10 +565,10 @@ function buildFAQ(poi) {
   if (poi.type === 'museum' || poi.type === 'gallery')
     faqs.push({ q: 'Is there an admission fee?', a: t.fee || 'Check locally — fees may apply.' })
   if (t.opening_hours)
-    faqs.push({ q: 'What are the opening hours?', a: t.opening_hours })
+    faqs.push({ q: 'Opening hours', a: t.opening_hours })
   if (t.wheelchair)
-    faqs.push({ q: 'Is it wheelchair accessible?', a: t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'no' ? 'No' : 'Limited accessibility.' })
+    faqs.push({ q: 'Wheelchair accessible?', a: t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'no' ? 'No' : 'Limited.' })
   if (t.website)
-    faqs.push({ q: 'Is there a website?', a: t.website })
+    faqs.push({ q: 'Website', a: t.website })
   return faqs
 }

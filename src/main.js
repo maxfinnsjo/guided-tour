@@ -58,6 +58,7 @@ function loadPersistedPOIs() {
 
 const statusText = document.getElementById('status-text')
 const recenterBtn = document.getElementById('btn-recenter')
+const btnTheme = document.getElementById('btn-theme')
 const btnTour = document.getElementById('btn-tour')
 const btnFaq = document.getElementById('btn-faq')
 const tourPanel = document.getElementById('tour-panel')
@@ -68,6 +69,24 @@ const poiDrawer = document.getElementById('poi-drawer')
 const poiDrawerHandle = document.getElementById('poi-drawer-handle')
 const poiDrawerLabel = document.getElementById('poi-drawer-label')
 const poiDrawerList = document.getElementById('poi-drawer-list')
+
+// ── Theme toggle ─────────────────────────────────────────────────────────────
+
+const THEME_KEY = 'guided-tour-theme'
+function applyTheme(light) {
+  document.documentElement.classList.toggle('light', light)
+  btnTheme.textContent = light ? '☽' : '☀'
+  document.getElementById('meta-theme-color').setAttribute('content', light ? '#ede8dc' : '#1a1a2e')
+}
+;(function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY)
+  applyTheme(saved === 'light')
+})()
+btnTheme.addEventListener('click', () => {
+  const isLight = document.documentElement.classList.toggle('light')
+  localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark')
+  applyTheme(isLight)
+})
 
 // ── Panel toggles ─────────────────────────────────────────────────────────────
 

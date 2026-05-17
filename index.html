@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="theme-color" content="#1a1a2e" id="meta-theme-color" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <title>Guided Tour</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/src/style.css" />
@@ -17,6 +18,7 @@
     <header id="header">
       <span id="mode-label">Free Roam</span>
       <div id="header-actions">
+        <button id="btn-theme" title="Toggle light/dark mode" aria-label="Toggle theme">☀</button>
         <button id="btn-tour" title="Tour mode">Tour</button>
         <button id="btn-faq" title="FAQ">FAQ</button>
       </div>
@@ -26,46 +28,76 @@
 
     <!-- Flash card -->
     <div id="flashcard" class="hidden">
-      <button id="flashcard-close">✕</button>
+      <div id="fc-drag-handle"></div>
+      <button id="flashcard-close" aria-label="Close">✕</button>
+
+      <!-- Header row: name + type + image toggle -->
+      <div id="fc-header">
+        <div id="fc-header-text">
+          <h2 id="fc-name"></h2>
+          <p id="fc-type"></p>
+        </div>
+        <button id="fc-img-toggle" class="fc-icon-btn hidden" title="Toggle image" aria-label="Show/hide image">⊞</button>
+      </div>
+
+      <!-- Image (hidden by default, toggled) -->
+      <div id="fc-image-wrap" class="hidden">
+        <img id="fc-wiki-thumb" src="" alt="" />
+        <p id="fc-wiki-credit" class="hidden"></p>
+      </div>
+
       <div id="flashcard-content">
-        <h2 id="fc-name"></h2>
-        <p id="fc-type"></p>
         <p id="fc-desc"></p>
+
         <div id="fc-osm" class="hidden">
           <p id="fc-osm-note"></p>
           <p id="fc-osm-inscription"></p>
         </div>
+
+        <!-- At a glance: basics + sheet + facts merged -->
         <div id="fc-basics" class="hidden">
           <p class="fc-section-label">At a glance</p>
           <ul id="fc-basics-list"></ul>
         </div>
         <div id="fc-sheet" class="hidden">
-          <p class="fc-section-label">Fact sheet</p>
           <div id="fc-sheet-year"></div>
           <ul id="fc-sheet-people"></ul>
         </div>
         <div id="fc-facts" class="hidden">
-          <p class="fc-section-label">Quick facts</p>
           <ul id="fc-facts-list"></ul>
         </div>
-        <div id="fc-wiki-loading" class="hidden">Loading summary…</div>
+
+        <!-- Wikipedia summary -->
+        <div id="fc-wiki-loading" class="hidden">Loading…</div>
         <div id="fc-wiki" class="hidden">
           <p class="fc-section-label">Wikipedia</p>
-          <img id="fc-wiki-thumb" class="hidden" src="" alt="" />
-          <p id="fc-wiki-credit" class="hidden"></p>
           <p id="fc-wiki-extract"></p>
-          <a id="fc-wiki-link" href="" target="_blank" rel="noopener">Read on Wikipedia →</a>
+          <a id="fc-wiki-link" href="" target="_blank" rel="noopener">Read more →</a>
         </div>
+
+        <!-- Web search -->
         <div id="fc-web-search" class="hidden">
           <p class="fc-section-label">Web</p>
           <p id="fc-ws-extract"></p>
           <a id="fc-ws-link" href="" target="_blank" rel="noopener">More info →</a>
         </div>
+
+        <!-- Your notes -->
+        <div id="fc-notes-section">
+          <p class="fc-section-label">Your notes</p>
+          <div id="fc-notes-display" class="hidden"></div>
+          <textarea id="fc-notes-input" placeholder="Add a note for this place…" rows="2"></textarea>
+          <div id="fc-notes-actions">
+            <button id="fc-notes-save">Save note</button>
+            <button id="fc-notes-clear" class="fc-notes-clear-btn hidden">Clear</button>
+          </div>
+        </div>
+
+        <!-- FAQ -->
         <div id="fc-faq" class="hidden">
-          <h3>FAQ</h3>
           <ul id="fc-faq-list"></ul>
         </div>
-        <button id="fc-faq-toggle">Show FAQ</button>
+        <button id="fc-faq-toggle" class="hidden">Show FAQ</button>
       </div>
     </div>
 
