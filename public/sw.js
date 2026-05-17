@@ -3,7 +3,7 @@ const CACHE = 'guided-tour-v3'
 self.addEventListener('install', e => {
   // Only cache the shell HTML — not source files, which Vite rewrites
   e.waitUntil(
-    caches.open(CACHE).then(c => c.add('/')).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.add('/guided-tour/')).then(() => self.skipWaiting())
   )
 })
 
