@@ -225,9 +225,28 @@ async function resolveWikidataByName(poi) {
     if (!best) best = results.find(notName)
     if (!best) best = null
 
-    const qid = best?.id
-    wikiCache.set(cacheKey, qid ?? null)
-    if (qid) poi.tags.wikidata = qid
+    if (!best?.id) { wikiCache.set(cacheKey, null); return }
+
+    // Validate the match is geographically plausible (within 50km) if the POI has coordinates
+    const qid = best.id
+    if (poi.lat != null && poi.lon != null) {
+      try {
+        const entity = await fetchWikidataEntity(qid)
+        const coordClaim = entity?.claims?.P625?.[0]
+        const coordVal = coordClaim?.mainsnak?.datavalue?.value
+        if (coordVal) {
+          const dLat = (coordVal.latitude - poi.lat) * Math.PI / 180
+          const dLon = (coordVal.longitude - poi.lon) * Math.PI / 180
+          const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(poi.lat * Math.PI / 180) * Math.cos(coordVal.latitude * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+          const dist = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+          if (dist > 50000) { wikiCache.set(cacheKey, null); return }
+        }
+      } catch {}
+    }
+
+    wikiCache.set(cacheKey, qid)
+    poi.tags.wikidata = qid
   } catch {
     wikiCache.set(cacheKey, null)
   }

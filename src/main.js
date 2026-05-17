@@ -31,6 +31,14 @@ function persistPOIs() {
   } catch {}
 }
 
+function clearPOIs() {
+  for (const marker of poiMarkers.values()) marker.remove()
+  poiMarkers.clear()
+  loadedPOIs.clear()
+  lastFetchCenter = null
+  try { localStorage.removeItem(POI_STORAGE_KEY) } catch {}
+}
+
 function loadPersistedPOIs() {
   try {
     const raw = localStorage.getItem(POI_STORAGE_KEY)
@@ -251,11 +259,14 @@ watchPosition(
       setTimeout(() => { statusText.textContent = '' }, 3000)
     }
 
-    const shouldFetch =
-      !lastFetchCenter ||
-      distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon) > REFETCH_DISTANCE
+    const distFromLast = lastFetchCenter
+      ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)
+      : Infinity
 
-    if (shouldFetch) fetchPOIs(lat, lon)
+    // If the location jumped far (e.g. initial fix was wrong), discard all stale POIs first
+    if (distFromLast > FETCH_RADIUS) clearPOIs()
+
+    if (distFromLast > REFETCH_DISTANCE) fetchPOIs(lat, lon)
 
     if (tour.isActive()) {
       checkTourProximity(lat, lon)
