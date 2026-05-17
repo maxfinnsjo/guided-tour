@@ -35,11 +35,8 @@ const statusText = document.getElementById('status-text')
 const recenterBtn = document.getElementById('btn-recenter')
 const btnTheme = document.getElementById('btn-theme')
 const btnTour = document.getElementById('btn-tour')
-const btnFaq = document.getElementById('btn-faq')
 const tourPanel = document.getElementById('tour-panel')
 const tourClose = document.getElementById('tour-close')
-const faqPanel = document.getElementById('faq-panel')
-const faqClose = document.getElementById('faq-close')
 const poiDrawer = document.getElementById('poi-drawer')
 const poiDrawerHandle = document.getElementById('poi-drawer-handle')
 const poiDrawerLabel = document.getElementById('poi-drawer-label')
@@ -65,16 +62,8 @@ btnTheme.addEventListener('click', () => {
 
 // ── Panel toggles ─────────────────────────────────────────────────────────────
 
-btnTour.addEventListener('click', () => {
-  tourPanel.classList.toggle('hidden')
-  faqPanel.classList.add('hidden')
-})
+btnTour.addEventListener('click', () => tourPanel.classList.toggle('hidden'))
 tourClose.addEventListener('click', () => tourPanel.classList.add('hidden'))
-btnFaq.addEventListener('click', () => {
-  faqPanel.classList.toggle('hidden')
-  tourPanel.classList.add('hidden')
-})
-faqClose.addEventListener('click', () => faqPanel.classList.add('hidden'))
 recenterBtn.addEventListener('click', () => {
   if (!userMarker) return
   map.setView(userMarker.getLatLng(), map.getZoom())
@@ -156,7 +145,7 @@ function formatDist(m) {
 // ── Fetch POIs from Overpass ───────────────────────────────────────────────────
 
 async function fetchPOIs(lat, lon) {
-  statusText.textContent = 'Fetching nearby places…'
+  statusText.textContent = 'Looking for nearby places…'
   try {
     const pois = await fetchNearbyPOIs(lat, lon, FETCH_RADIUS)
     for (const poi of pois) {
@@ -168,10 +157,10 @@ async function fetchPOIs(lat, lon) {
     refreshDrawer()
     lastFetchCenter = { lat, lon }
     const n = loadedPOIs.size
-    statusText.textContent = `${n} place${n !== 1 ? 's' : ''} nearby`
-    setTimeout(() => { statusText.textContent = '' }, 4000)
+    statusText.textContent = `${n} place${n !== 1 ? 's' : ''} nearby — tap any to learn more`
+    setTimeout(() => { statusText.textContent = '' }, 5000)
   } catch (err) {
-    statusText.textContent = 'Could not fetch places'
+    statusText.textContent = 'Could not load nearby places'
     console.error(err)
   }
 }
@@ -204,7 +193,7 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-statusText.textContent = 'Locating via GPS…'
+statusText.textContent = 'Finding your location…'
 let centered = false
 
 watchPosition(
@@ -227,8 +216,8 @@ watchPosition(
     if (!centered) {
       map.setView([lat, lon], 16)
       centered = true
-      statusText.textContent = 'Location found'
-      setTimeout(() => { statusText.textContent = '' }, 3000)
+      statusText.textContent = 'Location found — loading nearby places…'
+      setTimeout(() => { statusText.textContent = '' }, 4000)
     }
 
     const distFromLast = lastFetchCenter

@@ -16,11 +16,10 @@
 <body>
   <div id="app">
     <header id="header">
-      <span id="mode-label">Free Roam</span>
+      <span id="mode-label">Exploring</span>
       <div id="header-actions">
-        <button id="btn-theme" title="Toggle light/dark mode" aria-label="Toggle theme">☀</button>
-        <button id="btn-tour" title="Tour mode">Tour</button>
-        <button id="btn-faq" title="FAQ">FAQ</button>
+        <button id="btn-theme" title="Switch light/dark mode" aria-label="Toggle theme">☀</button>
+        <button id="btn-tour" title="Plan or run a tour">My Tour</button>
       </div>
     </header>
 
@@ -104,66 +103,58 @@
     <!-- Tour panel -->
     <div id="tour-panel" class="hidden">
       <div id="tour-header">
-        <h2>Tour</h2>
-        <button id="tour-close">✕</button>
+        <h2>My Tour</h2>
+        <button id="tour-close" aria-label="Close">✕</button>
       </div>
 
-      <!-- Saved tours -->
+      <p class="tour-hint">Add stops below, then tap <strong>Start Tour</strong> to begin. The app will guide you to each stop in order.</p>
+
+      <!-- Save / load -->
+      <p class="tour-section-label">Save &amp; load</p>
       <div id="tour-name-row">
-        <input id="tour-name-input" type="text" placeholder="Tour name…" autocomplete="off" />
+        <input id="tour-name-input" type="text" placeholder="Give your tour a name…" autocomplete="off" />
         <button id="tour-save-btn">Save</button>
       </div>
       <div id="tour-saved-row">
-        <select id="tour-saved-select"><option value="">— load saved tour —</option></select>
+        <select id="tour-saved-select"><option value="">— open a saved tour —</option></select>
         <button id="tour-delete-btn" class="danger">Delete</button>
       </div>
       <div id="tour-transfer-row">
-        <button id="tour-export-btn">Export JSON</button>
-        <label id="tour-import-json-label">Import JSON
+        <button id="tour-export-btn">Share (export)</button>
+        <label id="tour-import-json-label">Load from file
           <input type="file" id="tour-import-json" accept=".json" />
         </label>
       </div>
 
-      <!-- Add POI manually -->
+      <!-- Add a stop manually -->
       <details id="tour-add-section">
-        <summary>+ Add a POI</summary>
+        <summary>+ Add a stop</summary>
         <form id="tour-add-form" autocomplete="off">
-          <input id="add-poi-name" type="text" placeholder="Name *" required />
+          <input id="add-poi-name" type="text" placeholder="Stop name (e.g. City Hall) *" required />
           <div id="add-poi-coords">
             <input id="add-poi-lat" type="text" placeholder="Latitude" inputmode="decimal" />
             <input id="add-poi-lon" type="text" placeholder="Longitude" inputmode="decimal" />
           </div>
-          <button type="button" id="add-poi-pick">Pick from map</button>
-          <input id="add-poi-type" type="text" placeholder="Type (e.g. museum, monument)" />
-          <textarea id="add-poi-desc" placeholder="Notes / description" rows="3"></textarea>
-          <input id="add-poi-wiki" type="text" placeholder="Wikipedia article title (optional)" />
-          <button type="submit">Add to tour</button>
+          <button type="button" id="add-poi-pick">📍 Pick location on map</button>
+          <input id="add-poi-type" type="text" placeholder="Category (e.g. museum, park)" />
+          <textarea id="add-poi-desc" placeholder="Your notes about this stop" rows="3"></textarea>
+          <input id="add-poi-wiki" type="text" placeholder="Wikipedia page title (optional)" />
+          <button type="submit">Add stop</button>
         </form>
       </details>
 
-      <!-- File import (existing) -->
+      <!-- Import from file -->
       <div id="tour-import">
-        <label>Import POIs from CSV / JSON file
+        <label>Import stops from a file (CSV or JSON)
           <input type="file" id="tour-file" accept=".json,.csv" />
         </label>
       </div>
 
-      <button id="tour-start" class="disabled" disabled>Start Tour</button>
+      <button id="tour-start" class="disabled" disabled>▶ Start Tour</button>
       <ol id="tour-list"></ol>
     </div>
 
-    <!-- FAQ panel -->
-    <div id="faq-panel" class="hidden">
-      <div id="faq-header">
-        <h2>FAQ</h2>
-        <button id="faq-close">✕</button>
-      </div>
-      <div id="faq-content">
-        <p>Select a POI on the map to see its FAQ, or browse nearby POIs.</p>
-      </div>
-    </div>
-
-    <!-- Nearby POI slide-up drawer -->
+    <!-- Nearby places slide-up drawer -->
     <div id="poi-drawer">
       <div id="poi-drawer-handle">
         <span id="poi-drawer-arrow">▲</span>
@@ -173,8 +164,8 @@
     </div>
 
     <div id="status-bar">
-      <span id="status-text">Locating…</span>
-      <button id="btn-recenter" title="Re-center">⊙</button>
+      <span id="status-text">Finding your location…</span>
+      <button id="btn-recenter" title="Re-center on my location">⊙</button>
     </div>
   </div>
 

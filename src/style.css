@@ -444,6 +444,25 @@ button#btn-recenter {
 .fc-faq-link:hover { text-decoration: underline; }
 
 /* ── Tour panel ── */
+.tour-hint {
+  font-size: 0.84rem;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+.tour-hint strong { color: var(--text); }
+.tour-section-label {
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
 #tour-panel {
   position: fixed;
   top: var(--header-h); bottom: var(--status-h);
@@ -644,24 +663,7 @@ button#btn-recenter {
   pointer-events: none;
 }
 
-/* ── FAQ panel ── */
-#faq-panel {
-  position: fixed;
-  top: var(--header-h); bottom: var(--status-h);
-  left: 0; right: 0;
-  background: var(--bg);
-  z-index: 950;
-  overflow-y: auto;
-  padding: 20px;
-  transition: transform 0.25s ease;
-}
-#faq-panel.hidden { transform: translateX(100%); }
-#faq-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
+
 
 /* ── Leaflet overrides ── */
 .leaflet-control-zoom { border: none !important; }

@@ -56,7 +56,7 @@ function saveTourState() {
 
 function refreshSavedSelect() {
   const tours = loadSavedTours()
-  savedSelect.innerHTML = '<option value="">— load saved tour —</option>' +
+  savedSelect.innerHTML = '<option value="">— open a saved tour —</option>' +
     tours.map(t => `<option value="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('')
   if (currentTourName) savedSelect.value = currentTourName
 }
@@ -149,7 +149,7 @@ export function markVisited(index) {
 
 export function stop() {
   active = false
-  modeLabel.textContent = 'Free Roam'
+  modeLabel.textContent = 'Exploring'
   enableStart()
 }
 
@@ -169,7 +169,7 @@ savedSelect.addEventListener('change', () => {
 deleteBtn.addEventListener('click', () => {
   const name = savedSelect.value || currentTourName
   if (!name) return
-  if (!confirm(`Delete tour "${name}"?`)) return
+  if (!confirm(`Delete "${name}"? This can't be undone.`)) return
   deleteTour(name)
   if (currentTourName === null) { pois = []; renderList(); disableStart() }
 })
@@ -216,7 +216,7 @@ startBtn.addEventListener('click', () => {
   if (!pois.length) return
   active = true
   currentIndex = 0
-  modeLabel.textContent = 'Tour'
+  modeLabel.textContent = 'On Tour'
   renderList()
   panel.classList.add('hidden')
   document.dispatchEvent(new CustomEvent('tour:started'))
@@ -289,9 +289,9 @@ function buildPoiRow(p, i) {
 function openEditForm(li, p) {
   li.innerHTML = `
     <form class="poi-edit-form">
-      <input class="ef-name" type="text" value="${escHtml(p.name)}" placeholder="Name" required />
-      <textarea class="ef-desc" rows="2" placeholder="Notes">${escHtml(p.desc || '')}</textarea>
-      <input class="ef-wiki" type="text" value="${escHtml(p.tags?.wikipedia || '')}" placeholder="Wikipedia title" />
+      <input class="ef-name" type="text" value="${escHtml(p.name)}" placeholder="Stop name" required />
+      <textarea class="ef-desc" rows="2" placeholder="Your notes about this stop">${escHtml(p.desc || '')}</textarea>
+      <input class="ef-wiki" type="text" value="${escHtml(p.tags?.wikipedia || '')}" placeholder="Wikipedia page title (optional)" />
       <div class="ef-actions">
         <button type="submit">Save</button>
         <button type="button" class="ef-cancel">Cancel</button>
