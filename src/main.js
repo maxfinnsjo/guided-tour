@@ -83,7 +83,7 @@ function applyTheme(light) {
   applyTheme(saved === 'light')
 })()
 btnTheme.addEventListener('click', () => {
-  const isLight = document.documentElement.classList.toggle('light')
+  const isLight = !document.documentElement.classList.contains('light')
   localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark')
   applyTheme(isLight)
 })
@@ -101,7 +101,12 @@ btnFaq.addEventListener('click', () => {
 })
 faqClose.addEventListener('click', () => faqPanel.classList.add('hidden'))
 recenterBtn.addEventListener('click', () => {
-  if (userMarker) map.setView(userMarker.getLatLng(), map.getZoom())
+  if (!userMarker) return
+  map.setView(userMarker.getLatLng(), map.getZoom())
+  if (userLatLon && lastFetchCenter) {
+    const d = distance(userLatLon.lat, userLatLon.lon, lastFetchCenter.lat, lastFetchCenter.lon)
+    if (d > REFETCH_DISTANCE) { clearPOIs(); fetchPOIs(userLatLon.lat, userLatLon.lon) }
+  }
 })
 
 poiDrawerHandle.addEventListener('click', () => {
@@ -247,6 +252,7 @@ getFastPosition()
     }).addTo(map)
     fetchPOIs(lat, lon)
     centered = true
+    centeredViaFallback = true
   })
   .catch(() => {
     statusText.textContent = 'Locating via GPS…'
@@ -269,6 +275,8 @@ watchPosition(
       userMarker.setLatLng([lat, lon])
     }
 
+    const superseded = centeredViaFallback
+
     // Center map on first watchPosition fix if getFastPosition didn't already do it
     if (!centered || centeredViaFallback) {
       map.setView([lat, lon], 16)
@@ -282,10 +290,13 @@ watchPosition(
       ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)
       : Infinity
 
-    // If the location jumped far (e.g. initial fix was wrong), discard all stale POIs first
-    if (distFromLast > FETCH_RADIUS) clearPOIs()
-
-    if (distFromLast > REFETCH_DISTANCE) fetchPOIs(lat, lon)
+    // First real GPS fix always replaces a potentially wrong fast-position fetch
+    if (superseded || distFromLast > FETCH_RADIUS) {
+      clearPOIs()
+      fetchPOIs(lat, lon)
+    } else if (distFromLast > REFETCH_DISTANCE) {
+      fetchPOIs(lat, lon)
+    }
 
     if (tour.isActive()) {
       checkTourProximity(lat, lon)

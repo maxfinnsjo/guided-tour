@@ -97,7 +97,6 @@ function renderNotes(text) {
     fcNotesDisplay.textContent = text
     fcNotesDisplay.classList.remove('hidden')
     fcNotesClear.classList.remove('hidden')
-    fcNotesInput.value = text
   } else {
     fcNotesDisplay.classList.add('hidden')
     fcNotesClear.classList.add('hidden')
@@ -163,7 +162,7 @@ export function show(poi) {
   // Reset image
   imageVisible = false
   fcImageWrap.classList.add('hidden')
-  fcImgToggle.classList.remove('active', 'hidden')
+  fcImgToggle.classList.remove('active')
   fcImgToggle.classList.add('hidden')
   fcWikiThumb.src = ''
   fcWikiCredit.textContent = ''
