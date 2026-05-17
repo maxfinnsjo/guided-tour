@@ -222,10 +222,7 @@ getFastPosition()
     centered = true
   })
   .catch(() => {
-    map.setView([51.505, -0.09], 13)
     statusText.textContent = 'Locating via GPS…'
-    centered = true
-    centeredViaFallback = true
   })
 
 watchPosition(
