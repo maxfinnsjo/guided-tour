@@ -10,18 +10,6 @@ export function distance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-// Fast, low-accuracy fix for initial map display (IP/WiFi — resolves in ~1s)
-export function getFastPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: false,
-      maximumAge: 0,
-      timeout: 12000,
-    })
-  })
-}
-
 export function watchPosition(onSuccess, onError) {
   if (!navigator.geolocation) {
     onError(new Error('Geolocation not supported'))

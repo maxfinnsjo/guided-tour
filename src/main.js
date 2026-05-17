@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import { fetchNearbyPOIs } from './overpass.js'
-import { distance, watchPosition, getFastPosition } from './geo.js'
+import { distance, watchPosition } from './geo.js'
 import { show as showCard, hide as hideCard } from './flashcard.js'
 import * as tour from './tour.js'
 
@@ -22,36 +22,11 @@ let lastFetchCenter = null
 const FETCH_RADIUS = 600
 const REFETCH_DISTANCE = 200
 const PROXIMITY_ALERT = 80
-const POI_STORAGE_KEY = 'guided-tour-pois-v1'
-
-function persistPOIs() {
-  try {
-    const arr = [...loadedPOIs.values()]
-    localStorage.setItem(POI_STORAGE_KEY, JSON.stringify(arr))
-  } catch {}
-}
-
 function clearPOIs() {
   for (const marker of poiMarkers.values()) marker.remove()
   poiMarkers.clear()
   loadedPOIs.clear()
   lastFetchCenter = null
-  try { localStorage.removeItem(POI_STORAGE_KEY) } catch {}
-}
-
-function loadPersistedPOIs() {
-  try {
-    const raw = localStorage.getItem(POI_STORAGE_KEY)
-    if (!raw) return
-    const arr = JSON.parse(raw)
-    for (const poi of arr) {
-      if (!loadedPOIs.has(poi.id)) {
-        loadedPOIs.set(poi.id, poi)
-        addPOIMarker(poi)
-      }
-    }
-    refreshDrawer()
-  } catch {}
 }
 
 // ── UI refs ───────────────────────────────────────────────────────────────────
@@ -191,7 +166,6 @@ async function fetchPOIs(lat, lon) {
       }
     }
     refreshDrawer()
-    persistPOIs()
     lastFetchCenter = { lat, lon }
     const n = loadedPOIs.size
     statusText.textContent = `${n} place${n !== 1 ? 's' : ''} nearby`
@@ -230,33 +204,8 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-// Load last session's POIs immediately so the map isn't blank while GPS resolves
-loadPersistedPOIs()
-
-// Phase 1: fast low-accuracy fix (IP/WiFi) — centers the map immediately
-// Phase 2: watchPosition with high-accuracy refines the marker in the background
+statusText.textContent = 'Locating via GPS…'
 let centered = false
-let centeredViaFallback = false
-
-getFastPosition()
-  .then(pos => {
-    const { latitude: lat, longitude: lon } = pos.coords
-    userLatLon = { lat, lon }
-    map.setView([lat, lon], 16)
-    userMarker = L.circleMarker([lat, lon], {
-      radius: 7,
-      color: '#fff',
-      fillColor: '#4a9eff',
-      fillOpacity: 1,
-      weight: 2,
-    }).addTo(map)
-    fetchPOIs(lat, lon)
-    centered = true
-    centeredViaFallback = true
-  })
-  .catch(() => {
-    statusText.textContent = 'Locating via GPS…'
-  })
 
 watchPosition(
   pos => {
@@ -275,13 +224,9 @@ watchPosition(
       userMarker.setLatLng([lat, lon])
     }
 
-    const superseded = centeredViaFallback
-
-    // Center map on first watchPosition fix if getFastPosition didn't already do it
-    if (!centered || centeredViaFallback) {
+    if (!centered) {
       map.setView([lat, lon], 16)
       centered = true
-      centeredViaFallback = false
       statusText.textContent = 'Location found'
       setTimeout(() => { statusText.textContent = '' }, 3000)
     }
@@ -290,8 +235,7 @@ watchPosition(
       ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)
       : Infinity
 
-    // First real GPS fix always replaces a potentially wrong fast-position fetch
-    if (superseded || distFromLast > FETCH_RADIUS) {
+    if (distFromLast > FETCH_RADIUS) {
       clearPOIs()
       fetchPOIs(lat, lon)
     } else if (distFromLast > REFETCH_DISTANCE) {
