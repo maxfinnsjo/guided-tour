@@ -16,7 +16,6 @@ const fcFacts = document.getElementById('fc-facts')
 const fcFactsList = document.getElementById('fc-facts-list')
 const fcFaq = document.getElementById('fc-faq')
 const fcFaqList = document.getElementById('fc-faq-list')
-const fcFaqToggle = document.getElementById('fc-faq-toggle')
 const fcWiki = document.getElementById('fc-wiki')
 const fcWikiLoading = document.getElementById('fc-wiki-loading')
 const fcImageWrap = document.getElementById('fc-image-wrap')
@@ -36,7 +35,6 @@ const closeBtn = document.getElementById('flashcard-close')
 
 const NOTES_KEY = 'guided-tour-notes-v1'
 
-let faqVisible = false
 let imageVisible = false
 let currentPoiId = null
 const wikiCache = new Map()
@@ -65,12 +63,6 @@ function setNoteForPoi(id, text) {
 // ── Event listeners ───────────────────────────────────────────────────────────
 
 closeBtn.addEventListener('click', hide)
-
-fcFaqToggle.addEventListener('click', () => {
-  faqVisible = !faqVisible
-  fcFaq.classList.toggle('hidden', !faqVisible)
-  fcFaqToggle.textContent = faqVisible ? 'Hide FAQ' : 'Show FAQ'
-})
 
 fcImgToggle.addEventListener('click', () => {
   imageVisible = !imageVisible
@@ -175,16 +167,11 @@ export function show(poi) {
   // FAQ
   const faqs = buildFAQ(poi)
   if (faqs.length) {
-    fcFaqList.innerHTML = faqs
-      .map(q => `<li><strong>${q.q}</strong><span>${q.a}</span></li>`)
-      .join('')
-    fcFaqToggle.classList.remove('hidden')
+    fcFaqList.innerHTML = faqs.map(renderFaqItem).join('')
+    fcFaq.classList.remove('hidden')
   } else {
-    fcFaqToggle.classList.add('hidden')
+    fcFaq.classList.add('hidden')
   }
-  faqVisible = false
-  fcFaq.classList.add('hidden')
-  fcFaqToggle.textContent = 'Show FAQ'
 
   resolveWikidataByName(poi).then(() => {
     const qid = poi.tags?.wikidata
@@ -536,11 +523,39 @@ function formatType(type) {
   return TYPE_LABELS[type] || (type || '').replace(/_/g, ' ')
 }
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function formatOpeningHours(raw) {
+  return raw
+    .replace(/\bMo\b/g, 'Mon').replace(/\bTu\b/g, 'Tue').replace(/\bWe\b/g, 'Wed')
+    .replace(/\bTh\b/g, 'Thu').replace(/\bFr\b/g, 'Fri').replace(/\bSa\b/g, 'Sat')
+    .replace(/\bSu\b/g, 'Sun').replace(/\bPH\b/g, 'Public holidays')
+    .replace(/\boff\b/g, 'closed')
+    .replace(/;\s*/g, ' · ')
+}
+
+function renderFaqItem({ q, a, href }) {
+  const qHtml = escapeHtml(q)
+  let aHtml
+  if (href && /^(https?:|tel:|mailto:)/.test(href)) {
+    const label = escapeHtml(a)
+    const url = escapeHtml(href)
+    aHtml = `<a class="fc-faq-link" href="${url}" target="_blank" rel="noopener">${label}</a>`
+  } else {
+    aHtml = escapeHtml(a)
+  }
+  return `<li class="fc-faq-item"><span class="fc-faq-q">${qHtml}</span><span class="fc-faq-a">${aHtml}</span></li>`
+}
+
 function descriptionFromTags(tags = {}) {
   const parts = []
-  if (tags.opening_hours) parts.push(`Open: ${tags.opening_hours}`)
-  if (tags.website) parts.push(`Website: ${tags.website}`)
-  if (tags.phone) parts.push(`Phone: ${tags.phone}`)
+  if (tags.opening_hours) parts.push(`Open: ${formatOpeningHours(tags.opening_hours)}`)
   if (tags.wheelchair) parts.push(`Wheelchair: ${tags.wheelchair}`)
   return parts.join(' · ') || ''
 }
@@ -561,13 +576,53 @@ function buildBasicFacts(tags = {}) {
 function buildFAQ(poi) {
   const t = poi.tags || {}
   const faqs = []
-  if (poi.type === 'museum' || poi.type === 'gallery')
-    faqs.push({ q: 'Is there an admission fee?', a: t.fee || 'Check locally — fees may apply.' })
+  const add = (q, a, href) => faqs.push({ q, a, href })
+
+  const fee = t.fee || t.charge
+  if (fee) add('Admission fee', fee)
+  else if (poi.type === 'museum' || poi.type === 'gallery')
+    add('Admission fee', 'Check locally — fees may apply.')
+
   if (t.opening_hours)
-    faqs.push({ q: 'Opening hours', a: t.opening_hours })
-  if (t.wheelchair)
-    faqs.push({ q: 'Wheelchair accessible?', a: t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'no' ? 'No' : 'Limited.' })
-  if (t.website)
-    faqs.push({ q: 'Website', a: t.website })
+    add('Opening hours', formatOpeningHours(t.opening_hours))
+  if (t['opening_hours:note'])
+    add('Hours note', t['opening_hours:note'])
+
+  if (t.wheelchair) {
+    const val = t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'no' ? 'No' : 'Limited'
+    add('Wheelchair accessible', val)
+  }
+  if (t['toilets:wheelchair'])
+    add('Accessible toilets', t['toilets:wheelchair'] === 'yes' ? 'Yes' : t['toilets:wheelchair'] === 'no' ? 'No' : t['toilets:wheelchair'])
+  if (t.toilets)
+    add('Toilets', t.toilets === 'yes' ? 'Available' : t.toilets === 'no' ? 'None' : t.toilets)
+
+  if (t.internet_access)
+    add('WiFi', t.internet_access === 'wlan' || t.internet_access === 'yes' ? 'Available' : t.internet_access === 'no' ? 'None' : t.internet_access)
+
+  if (t.dog)
+    add('Dog friendly', t.dog === 'yes' ? 'Yes' : t.dog === 'no' ? 'No' : t.dog)
+
+  const phone = t.phone || t['contact:phone']
+  if (phone) add('Phone', phone, `tel:${phone.replace(/\s/g, '')}`)
+
+  const email = t.email || t['contact:email']
+  if (email) add('Email', email, `mailto:${email}`)
+
+  const website = t.website || t['contact:website']
+  if (website) add('Website', website.replace(/^https?:\/\//, '').replace(/\/$/, ''), website)
+
+  const addrParts = [t['addr:housenumber'], t['addr:street'], t['addr:city']].filter(Boolean)
+  if (addrParts.length >= 2) add('Address', addrParts.join(' '))
+
+  if (t.reservation)
+    add('Reservation', t.reservation === 'yes' ? 'Required' : t.reservation === 'recommended' ? 'Recommended' : t.reservation === 'no' ? 'Not needed' : t.reservation)
+
+  const payments = []
+  if (t['payment:cash'] === 'yes') payments.push('Cash')
+  if (t['payment:cards'] === 'yes' || t['payment:credit_cards'] === 'yes') payments.push('Cards')
+  if (t['payment:contactless'] === 'yes') payments.push('Contactless')
+  if (payments.length) add('Payment', payments.join(', '))
+
   return faqs
 }

@@ -413,21 +413,35 @@ button#btn-recenter {
 }
 
 /* FAQ */
-#fc-faq { display: flex; flex-direction: column; gap: 8px; }
-#fc-faq-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-#fc-faq-list li { font-size: 0.84rem; line-height: 1.45; }
-#fc-faq-list li strong { display: block; color: var(--text); margin-bottom: 2px; }
-#fc-faq-list li span { color: var(--muted); }
-#fc-faq-toggle {
-  font-size: 0.76rem;
-  background: transparent;
-  color: var(--accent);
-  padding: 0;
-  border: none;
-  font-weight: 600;
-  text-align: left;
-  width: fit-content;
+#fc-faq { display: flex; flex-direction: column; gap: 6px; }
+#fc-faq-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
+.fc-faq-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+}
+.fc-faq-q {
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+}
+.fc-faq-a { font-size: 0.88rem; color: var(--text); line-height: 1.4; }
+.fc-faq-link {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.fc-faq-link:hover { text-decoration: underline; }
 
 /* ── Tour panel ── */
 #tour-panel {
