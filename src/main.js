@@ -65,9 +65,9 @@ btnTheme.addEventListener('click', () => {
 btnTour.addEventListener('click', () => tourPanel.classList.toggle('hidden'))
 tourClose.addEventListener('click', () => tourPanel.classList.add('hidden'))
 recenterBtn.addEventListener('click', () => {
-  if (!userMarker) return
-  map.setView(userMarker.getLatLng(), map.getZoom())
-  if (userLatLon && lastFetchCenter) {
+  if (!userLatLon) return
+  map.setView([userLatLon.lat, userLatLon.lon], map.getZoom())
+  if (lastFetchCenter) {
     const d = distance(userLatLon.lat, userLatLon.lon, lastFetchCenter.lat, lastFetchCenter.lon)
     if (d > REFETCH_DISTANCE) { clearPOIs(); fetchPOIs(userLatLon.lat, userLatLon.lon) }
   }
@@ -193,37 +193,75 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
+const ACCURACY_THRESHOLD = 100  // metres — ignore coarse fixes for initial centering
+const ACCURACY_WAIT_MS = 15000  // fall back to best available after this long
+
 statusText.textContent = 'Finding your location…'
 let centered = false
+let accuracyCircle = null
+let bestAccuracy = Infinity
+let accuracyTimer = null
 
-watchPosition(
-  pos => {
-    const { latitude: lat, longitude: lon } = pos.coords
-    userLatLon = { lat, lon }
+function onPosition(pos) {
+  const { latitude: lat, longitude: lon, accuracy } = pos.coords
+  userLatLon = { lat, lon }
 
-    if (!userMarker) {
-      userMarker = L.circleMarker([lat, lon], {
-        radius: 7,
-        color: '#fff',
-        fillColor: '#4a9eff',
-        fillOpacity: 1,
-        weight: 2,
-      }).addTo(map)
-    } else {
-      userMarker.setLatLng([lat, lon])
+  // Always update the dot marker
+  if (!userMarker) {
+    userMarker = L.circleMarker([lat, lon], {
+      radius: 7,
+      color: '#fff',
+      fillColor: '#4a9eff',
+      fillOpacity: 1,
+      weight: 2,
+    }).addTo(map)
+  } else {
+    userMarker.setLatLng([lat, lon])
+  }
+
+  // Show accuracy ring so the user can see fix quality
+  const accRadius = Math.min(accuracy, 500)
+  if (!accuracyCircle) {
+    accuracyCircle = L.circle([lat, lon], {
+      radius: accRadius,
+      color: '#4a9eff',
+      fillColor: '#4a9eff',
+      fillOpacity: 0.10,
+      weight: 1,
+    }).addTo(map)
+  } else {
+    accuracyCircle.setLatLng([lat, lon])
+    accuracyCircle.setRadius(accRadius)
+  }
+
+  // Track the best (smallest) accuracy we've seen
+  if (accuracy < bestAccuracy) bestAccuracy = accuracy
+
+  const goodEnough = accuracy <= ACCURACY_THRESHOLD
+
+  if (!centered && goodEnough) {
+    // Good GPS fix — use it
+    if (accuracyTimer) { clearTimeout(accuracyTimer); accuracyTimer = null }
+    _centerAndFetch(lat, lon)
+  } else if (!centered) {
+    statusText.textContent = `Improving accuracy… (±${Math.round(accuracy)}m)`
+    // Start the fallback timer on the first position we receive
+    if (!accuracyTimer) {
+      accuracyTimer = setTimeout(() => {
+        if (!centered && userLatLon) {
+          statusText.textContent = `Low accuracy (±${Math.round(bestAccuracy)}m) — using best available`
+          setTimeout(() => { statusText.textContent = '' }, 4000)
+          _centerAndFetch(userLatLon.lat, userLatLon.lon)
+        }
+      }, ACCURACY_WAIT_MS)
     }
+  }
 
-    if (!centered) {
-      map.setView([lat, lon], 16)
-      centered = true
-      statusText.textContent = 'Location found — loading nearby places…'
-      setTimeout(() => { statusText.textContent = '' }, 4000)
-    }
+  const distFromLast = lastFetchCenter
+    ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)
+    : Infinity
 
-    const distFromLast = lastFetchCenter
-      ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)
-      : Infinity
-
+  if (centered) {
     if (distFromLast > FETCH_RADIUS) {
       clearPOIs()
       fetchPOIs(lat, lon)
@@ -236,7 +274,19 @@ watchPosition(
     } else {
       checkProximity(lat, lon)
     }
-  },
+  }
+}
+
+function _centerAndFetch(lat, lon) {
+  centered = true
+  map.setView([lat, lon], 16)
+  statusText.textContent = 'Location found — loading nearby places…'
+  setTimeout(() => { statusText.textContent = '' }, 4000)
+  fetchPOIs(lat, lon)
+}
+
+watchPosition(
+  onPosition,
   err => { console.warn('Geolocation watch error', err) }
 )
 
