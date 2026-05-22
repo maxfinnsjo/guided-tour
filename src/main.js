@@ -274,6 +274,7 @@ let accuracyTimer = null
 function onPosition(pos) {
   const { latitude: lat, longitude: lon, accuracy } = pos.coords
   userLatLon = { lat, lon }
+  if (tour.isActive()) updateRouteLine()
 
   // Always update the dot marker
   if (!userMarker) {
