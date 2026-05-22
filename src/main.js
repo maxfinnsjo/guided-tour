@@ -312,21 +312,16 @@ function onPosition(pos) {
     if (accuracyTimer) { clearTimeout(accuracyTimer); accuracyTimer = null }
     _centerAndFetch(lat, lon)
   } else if (!centered) {
-    if (accuracy > DESKTOP_HINT_ACCURACY) {
-      statusText.textContent = `Poor location (±${Math.round(accuracy)}m) — right-click map to pin your position`
-    } else {
-      statusText.textContent = `Improving accuracy… (±${Math.round(accuracy)}m)`
-    }
+    statusText.textContent = accuracy > DESKTOP_HINT_ACCURACY
+      ? `Loading map… (GPS unavailable, right-click to pin position)`
+      : `Improving accuracy… (±${Math.round(accuracy)}m)`
     // Start the fallback timer on the first position we receive
     if (!accuracyTimer) {
       accuracyTimer = setTimeout(() => {
         if (!centered && userLatLon) {
+          _centerAndFetch(userLatLon.lat, userLatLon.lon)
           if (bestAccuracy > DESKTOP_HINT_ACCURACY) {
-            statusText.textContent = `Poor GPS — right-click map to pin your start position`
-          } else {
-            statusText.textContent = `Low accuracy (±${Math.round(bestAccuracy)}m) — using best available`
-            setTimeout(() => { statusText.textContent = '' }, 4000)
-            _centerAndFetch(userLatLon.lat, userLatLon.lon)
+            statusText.textContent = `Poor GPS — right-click map to pin your actual position`
           }
         }
       }, ACCURACY_WAIT_MS)
