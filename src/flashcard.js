@@ -1,4 +1,4 @@
-import { enrichFromWebSearch, reverseGeocode, fetchCommonsImage } from './websearch.js'
+import { enrichFromWebSearch, reverseGeocode, fetchCommonsImages } from './websearch.js'
 
 const card = document.getElementById('flashcard')
 const fcName = document.getElementById('fc-name')
@@ -18,15 +18,12 @@ const fcFaq = document.getElementById('fc-faq')
 const fcFaqList = document.getElementById('fc-faq-list')
 const fcWiki = document.getElementById('fc-wiki')
 const fcWikiLoading = document.getElementById('fc-wiki-loading')
-const fcImageWrap = document.getElementById('fc-image-wrap')
-const fcWikiThumb = document.getElementById('fc-wiki-thumb')
-const fcWikiCredit = document.getElementById('fc-wiki-credit')
+const fcImageStrip = document.getElementById('fc-image-strip')
 const fcWikiExtract = document.getElementById('fc-wiki-extract')
 const fcWikiLink = document.getElementById('fc-wiki-link')
 const fcWebSearch = document.getElementById('fc-web-search')
 const fcWsExtract = document.getElementById('fc-ws-extract')
 const fcWsLink = document.getElementById('fc-ws-link')
-const fcImgToggle = document.getElementById('fc-img-toggle')
 const fcNotesDisplay = document.getElementById('fc-notes-display')
 const fcNotesInput = document.getElementById('fc-notes-input')
 const fcNotesSave = document.getElementById('fc-notes-save')
@@ -35,8 +32,10 @@ const closeBtn = document.getElementById('flashcard-close')
 
 const NOTES_KEY = 'guided-tour-notes-v1'
 
-let imageVisible = false
 let currentPoiId = null
+let lightboxImages = []
+let lightboxIndex = 0
+let lightboxTouchStartX = 0
 const wikiCache = new Map()
 
 // ── Notes storage ─────────────────────────────────────────────────────────────
@@ -64,10 +63,54 @@ function setNoteForPoi(id, text) {
 
 closeBtn.addEventListener('click', hide)
 
-fcImgToggle.addEventListener('click', () => {
-  imageVisible = !imageVisible
-  fcImageWrap.classList.toggle('hidden', !imageVisible)
-  fcImgToggle.classList.toggle('active', imageVisible)
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
+const lightbox = document.getElementById('fc-lightbox')
+const lbImg    = document.getElementById('fc-lb-img')
+const lbCredit = document.getElementById('fc-lb-credit')
+const lbClose  = document.getElementById('fc-lb-close')
+const lbPrev   = document.getElementById('fc-lb-prev')
+const lbNext   = document.getElementById('fc-lb-next')
+
+function openLightbox(index) {
+  lightboxIndex = index
+  renderLightboxSlide()
+  lightbox.classList.remove('hidden')
+  document.body.style.overflow = 'hidden'
+}
+
+function closeLightbox() {
+  lightbox.classList.add('hidden')
+  document.body.style.overflow = ''
+}
+
+function renderLightboxSlide() {
+  const img = lightboxImages[lightboxIndex]
+  if (!img) return
+  lbImg.src = img.url
+  lbCredit.textContent = [img.credit, img.license].filter(Boolean).join(' · ')
+  lbCredit.classList.toggle('hidden', !lbCredit.textContent)
+  lbPrev.classList.toggle('hidden', lightboxIndex === 0)
+  lbNext.classList.toggle('hidden', lightboxIndex === lightboxImages.length - 1)
+}
+
+lbClose.addEventListener('click', closeLightbox)
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox() })
+lbPrev.addEventListener('click', () => { if (lightboxIndex > 0) { lightboxIndex--; renderLightboxSlide() } })
+lbNext.addEventListener('click', () => { if (lightboxIndex < lightboxImages.length - 1) { lightboxIndex++; renderLightboxSlide() } })
+
+lightbox.addEventListener('touchstart', e => { lightboxTouchStartX = e.touches[0].clientX }, { passive: true })
+lightbox.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - lightboxTouchStartX
+  if (dx < -40 && lightboxIndex < lightboxImages.length - 1) { lightboxIndex++; renderLightboxSlide() }
+  if (dx >  40 && lightboxIndex > 0)                         { lightboxIndex--; renderLightboxSlide() }
+})
+
+document.addEventListener('keydown', e => {
+  if (lightbox.classList.contains('hidden')) return
+  if (e.key === 'ArrowRight' && lightboxIndex < lightboxImages.length - 1) { lightboxIndex++; renderLightboxSlide() }
+  if (e.key === 'ArrowLeft'  && lightboxIndex > 0)                          { lightboxIndex--; renderLightboxSlide() }
+  if (e.key === 'Escape') closeLightbox()
 })
 
 fcNotesSave.addEventListener('click', () => {
@@ -151,14 +194,10 @@ export function show(poi) {
   fcWebSearch.classList.add('hidden')
   fcWsExtract.textContent = ''
 
-  // Reset image
-  imageVisible = false
-  fcImageWrap.classList.add('hidden')
-  fcImgToggle.classList.remove('active')
-  fcImgToggle.classList.add('hidden')
-  fcWikiThumb.src = ''
-  fcWikiCredit.textContent = ''
-  fcWikiCredit.classList.add('hidden')
+  // Reset image strip
+  lightboxImages = []
+  fcImageStrip.innerHTML = ''
+  fcImageStrip.classList.add('hidden')
 
   // Notes
   const existingNote = getNoteForPoi(currentPoiId)
@@ -215,13 +254,10 @@ export function show(poi) {
         fcWikiLink.href = summary.url
         fcWiki.classList.remove('hidden')
       }
-      // Image handling — show toggle button when an image is available
-      if (summary?.thumbnail) {
-        setThumbImage(summary.thumbnail, null, null)
-      } else if (poi.name) {
-        fetchCommonsImage(poi.name).then(img => {
-          if (img) setThumbImage(img.url, img.credit, img.license)
-        })
+      // Seed strip with Wikipedia thumbnail, then fetch more from Commons
+      if (summary?.thumbnail) addStripImage({ url: summary.thumbnail, thumb: summary.thumbnail, credit: null, license: null })
+      if (poi.name) {
+        fetchCommonsImages(poi.name).then(imgs => imgs.forEach(img => addStripImage(img)))
       }
       return enrichFromWebSearch(poi, fcWikiLink.href)
     }).then(result => {
@@ -236,13 +272,22 @@ export function show(poi) {
   card.classList.remove('hidden')
 }
 
-function setThumbImage(url, credit, license) {
-  fcWikiThumb.src = url
-  if (credit || license) {
-    fcWikiCredit.textContent = [credit, license].filter(Boolean).join(' · ')
-    fcWikiCredit.classList.remove('hidden')
-  }
-  fcImgToggle.classList.remove('hidden')
+function addStripImage(img) {
+  // Deduplicate by URL
+  if (lightboxImages.some(i => i.url === img.url)) return
+  const index = lightboxImages.length
+  lightboxImages.push(img)
+  const thumb = document.createElement('button')
+  thumb.className = 'fc-thumb'
+  thumb.setAttribute('aria-label', `View image ${index + 1}`)
+  const el = document.createElement('img')
+  el.src = img.thumb || img.url
+  el.alt = ''
+  el.loading = 'lazy'
+  thumb.appendChild(el)
+  thumb.addEventListener('click', () => openLightbox(index))
+  fcImageStrip.appendChild(thumb)
+  fcImageStrip.classList.remove('hidden')
 }
 
 export function hide() {

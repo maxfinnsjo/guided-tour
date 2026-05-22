@@ -81,27 +81,39 @@ async function fetchWikipediaSummary(title) {
   }
 }
 
-export async function fetchCommonsImage(name) {
+export async function fetchCommonsImages(name, limit = 6) {
   const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search` +
-    `&gsrsearch=${encodeURIComponent(name)}&gsrnamespace=6&prop=imageinfo` +
-    `&iiprop=url|extmetadata&iilimit=1&format=json&origin=*`
+    `&gsrsearch=${encodeURIComponent(name)}&gsrnamespace=6&gsrlimit=${limit}&prop=imageinfo` +
+    `&iiprop=url|thumburl|extmetadata&iilimit=1&iiurlwidth=320&format=json&origin=*`
   try {
     const res = await fetch(url)
-    if (!res.ok) return null
+    if (!res.ok) return []
     const data = await res.json()
     const pages = Object.values(data.query?.pages || {})
-    if (!pages.length) return null
-    const info = pages[0].imageinfo?.[0]
-    if (!info?.url) return null
-    const meta = info.extmetadata || {}
-    return {
-      url: info.url,
-      credit: meta.Artist?.value?.replace(/<[^>]+>/g, '') || null,
-      license: meta.LicenseShortName?.value || null,
-    }
+    return pages
+      .map(p => {
+        const info = p.imageinfo?.[0]
+        if (!info?.url) return null
+        const meta = info.extmetadata || {}
+        const ext = info.url.split('.').pop().toLowerCase()
+        if (['svg', 'pdf', 'ogg', 'ogv', 'webm', 'tif', 'tiff'].includes(ext)) return null
+        return {
+          url: info.url,
+          thumb: info.thumburl || info.url,
+          credit: meta.Artist?.value?.replace(/<[^>]+>/g, '') || null,
+          license: meta.LicenseShortName?.value || null,
+        }
+      })
+      .filter(Boolean)
   } catch {
-    return null
+    return []
   }
+}
+
+// Legacy single-image compat
+export async function fetchCommonsImage(name) {
+  const imgs = await fetchCommonsImages(name, 1)
+  return imgs[0] ?? null
 }
 
 export async function enrichFromWebSearch(poi, existingWikiUrl) {

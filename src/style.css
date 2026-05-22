@@ -384,22 +384,84 @@ button#btn-recenter {
   border-color: transparent;
 }
 
-/* Image */
-#fc-image-wrap {
+/* Thumbnail strip */
+#fc-image-strip {
+  display: flex;
+  gap: 6px;
   padding: 10px 20px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-#fc-wiki-thumb {
+#fc-image-strip::-webkit-scrollbar { display: none; }
+.fc-thumb {
+  flex-shrink: 0;
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  background: var(--surface2);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.fc-thumb:hover { border-color: var(--accent); }
+.fc-thumb img {
   width: 100%;
-  max-height: 160px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 10px;
   display: block;
 }
-#fc-wiki-credit {
-  font-size: 0.68rem;
-  color: var(--muted);
-  margin-top: 4px;
+
+/* Lightbox */
+#fc-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
 }
+#fc-lightbox.hidden { display: none; }
+#fc-lb-img {
+  max-width: 94vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+#fc-lb-credit {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.5);
+  margin-top: 8px;
+  text-align: center;
+  padding: 0 20px;
+}
+#fc-lb-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+#fc-lb-prev, #fc-lb-next {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  display: flex; align-items: center; justify-content: center;
+}
+#fc-lb-prev { left: 12px; }
+#fc-lb-next { right: 12px; }
+#fc-lb-prev.hidden, #fc-lb-next.hidden { display: none; }
 
 /* Content area */
 #flashcard-content {
