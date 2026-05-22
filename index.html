@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" id="meta-theme-color" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/guided-tour/manifest.json" />
+  <link rel="icon" type="image/png" href="/guided-tour/favicon.png" />
+  <title>Guided Tour</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script type="module" crossorigin src="/guided-tour/assets/index-CF4f53dI.js"></script>
+  <link rel="stylesheet" crossorigin href="/guided-tour/assets/index-jY-oSpKg.css">
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <span id="mode-label">Exploring</span>
+      <div id="header-actions">
+        <button id="btn-theme" title="Switch light/dark mode" aria-label="Toggle theme">☀</button>
+        <button id="btn-tour" title="Plan or run a tour">My Tour</button>
+      </div>
+    </header>
+
+    <div id="map"></div>
+
+    <!-- Flash card -->
+    <div id="flashcard" class="hidden">
+      <div id="fc-drag-handle"></div>
+      <button id="flashcard-close" aria-label="Close">✕</button>
+
+      <!-- Header row: name + type + image toggle -->
+      <div id="fc-header">
+        <div id="fc-header-text">
+          <h2 id="fc-name"></h2>
+          <p id="fc-type"></p>
+        </div>
+        <button id="fc-img-toggle" class="fc-icon-btn hidden" title="Toggle image" aria-label="Show/hide image">⊞</button>
+      </div>
+
+      <!-- Image (hidden by default, toggled) -->
+      <div id="fc-image-wrap" class="hidden">
+        <img id="fc-wiki-thumb" src="" alt="" />
+        <p id="fc-wiki-credit" class="hidden"></p>
+      </div>
+
+      <div id="flashcard-content">
+        <p id="fc-desc"></p>
+
+        <div id="fc-osm" class="hidden">
+          <p id="fc-osm-note"></p>
+          <p id="fc-osm-inscription"></p>
+        </div>
+
+        <!-- At a glance: basics + sheet + facts merged -->
+        <div id="fc-basics" class="hidden">
+          <p class="fc-section-label">At a glance</p>
+          <ul id="fc-basics-list"></ul>
+        </div>
+        <div id="fc-sheet" class="hidden">
+          <div id="fc-sheet-year"></div>
+          <ul id="fc-sheet-people"></ul>
+        </div>
+        <div id="fc-facts" class="hidden">
+          <ul id="fc-facts-list"></ul>
+        </div>
+
+        <!-- Wikipedia summary -->
+        <div id="fc-wiki-loading" class="hidden">Loading…</div>
+        <div id="fc-wiki" class="hidden">
+          <p class="fc-section-label">Wikipedia</p>
+          <p id="fc-wiki-extract"></p>
+          <a id="fc-wiki-link" href="" target="_blank" rel="noopener">Read more →</a>
+        </div>
+
+        <!-- Web search -->
+        <div id="fc-web-search" class="hidden">
+          <p class="fc-section-label">Web</p>
+          <p id="fc-ws-extract"></p>
+          <a id="fc-ws-link" href="" target="_blank" rel="noopener">More info →</a>
+        </div>
+
+        <!-- FAQ -->
+        <div id="fc-faq" class="hidden">
+          <p class="fc-section-label">Quick facts</p>
+          <ul id="fc-faq-list"></ul>
+        </div>
+
+        <!-- Your notes -->
+        <div id="fc-notes-section">
+          <p class="fc-section-label">Your notes</p>
+          <div id="fc-notes-display" class="hidden"></div>
+          <textarea id="fc-notes-input" placeholder="Add a note for this place…" rows="2"></textarea>
+          <div id="fc-notes-actions">
+            <button id="fc-notes-save">Save note</button>
+            <button id="fc-notes-clear" class="fc-notes-clear-btn hidden">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tour panel -->
+    <div id="tour-panel" class="hidden">
+      <div id="tour-header">
+        <h2>My Tour</h2>
+        <button id="tour-close" aria-label="Close">✕</button>
+      </div>
+
+      <p class="tour-hint">Add stops below, then tap <strong>Start Tour</strong> to begin. The app will guide you to each stop in order.</p>
+
+      <!-- Save / load -->
+      <p class="tour-section-label">Save &amp; load</p>
+      <div id="tour-name-row">
+        <input id="tour-name-input" type="text" placeholder="Give your tour a name…" autocomplete="off" />
+        <button id="tour-save-btn">Save</button>
+      </div>
+      <div id="tour-saved-row">
+        <select id="tour-saved-select"><option value="">— open a saved tour —</option></select>
+        <button id="tour-delete-btn" class="danger">Delete</button>
+      </div>
+      <div id="tour-transfer-row">
+        <button id="tour-export-btn">Share (export)</button>
+        <label id="tour-import-json-label">Load from file
+          <input type="file" id="tour-import-json" accept=".json" />
+        </label>
+      </div>
+
+      <!-- Add a stop -->
+      <div id="tour-add-section">
+        <button type="button" id="add-poi-pick" class="tour-add-primary-btn">📍 Tap map to add a stop</button>
+        <details id="tour-add-manual">
+          <summary>+ Add manually (lat/lon)</summary>
+          <form id="tour-add-form" autocomplete="off">
+            <input id="add-poi-name" type="text" placeholder="Stop name *" required />
+            <div id="add-poi-coords">
+              <input id="add-poi-lat" type="text" placeholder="Latitude" inputmode="decimal" />
+              <input id="add-poi-lon" type="text" placeholder="Longitude" inputmode="decimal" />
+            </div>
+            <details class="tour-add-extra">
+              <summary>More details (optional)</summary>
+              <input id="add-poi-type" type="text" placeholder="Category (e.g. museum, park)" />
+              <textarea id="add-poi-desc" placeholder="Your notes about this stop" rows="3"></textarea>
+              <input id="add-poi-wiki" type="text" placeholder="Wikipedia page title" />
+            </details>
+            <button type="submit">Add stop</button>
+          </form>
+        </details>
+      </div>
+
+      <!-- Import from file -->
+      <div id="tour-import">
+        <label>Import stops from a file (CSV or JSON)
+          <input type="file" id="tour-file" accept=".json,.csv" />
+        </label>
+      </div>
+
+      <div id="tour-mode-row">
+        <label class="tour-mode-opt">
+          <input type="radio" name="tour-mode" value="manual" checked />
+          <span>Manual</span>
+        </label>
+        <label class="tour-mode-opt">
+          <input type="radio" name="tour-mode" value="auto" />
+          <span>Auto</span>
+        </label>
+      </div>
+      <button id="tour-start" class="disabled" disabled>▶ Start Tour</button>
+      <ol id="tour-list"></ol>
+    </div>
+
+    <!-- Nearby places slide-up drawer -->
+    <div id="poi-drawer">
+      <div id="poi-drawer-handle">
+        <span id="poi-drawer-arrow">▲</span>
+        <span id="poi-drawer-label">Nearby places</span>
+      </div>
+      <ul id="poi-drawer-list"></ul>
+    </div>
+
+    <!-- Tour controls bar (visible only during active tour) -->
+    <div id="tour-controls" class="hidden">
+      <button id="tc-prev" title="Previous stop">‹</button>
+      <div id="tc-center">
+        <span id="tc-step"></span>
+        <button id="tc-name" title="Show info"></button>
+      </div>
+      <button id="tc-next" title="Next stop">›</button>
+      <button id="tc-stop" title="End tour">✕</button>
+    </div>
+
+    <div id="status-bar">
+      <span id="status-text">Finding your location…</span>
+      <div id="status-actions">
+        <button id="btn-clear-pin" class="hidden" title="Clear manual pin">📍 Pinned</button>
+        <button id="btn-recenter" title="Re-center on my location">⊙</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
