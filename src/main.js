@@ -22,6 +22,7 @@ let poiMarkers = new Map()  // id → marker
 let loadedPOIs = new Map()  // id → poi
 let lastFetchCenter = null
 let routeLine = null         // dashed line from user to current tour POI
+let tourPathLine = null      // solid line connecting all tour stops in order
 const FETCH_RADIUS = 600
 const REFETCH_DISTANCE = 200
 const PROXIMITY_ALERT = 80
@@ -379,6 +380,7 @@ document.addEventListener('tour:started', () => {
     }
   }
   refreshDrawer()
+  drawTourPath()
   updateRouteLine()
 })
 
@@ -401,6 +403,7 @@ document.addEventListener('tour:step', e => {
 
 document.addEventListener('tour:stopped', () => {
   if (routeLine) { routeLine.remove(); routeLine = null }
+  if (tourPathLine) { tourPathLine.remove(); tourPathLine = null }
 })
 
 function updateRouteLine() {
@@ -411,6 +414,17 @@ function updateRouteLine() {
     [[userLatLon.lat, userLatLon.lon], [poi.lat, poi.lon]],
     { color: 'var(--accent,#e94560)', weight: 2, dashArray: '6 6', opacity: 0.7 }
   ).addTo(map)
+}
+
+function drawTourPath() {
+  if (tourPathLine) { tourPathLine.remove(); tourPathLine = null }
+  const coords = tour.getPOIs()
+    .filter(p => p.lat != null && p.lon != null)
+    .map(p => [p.lat, p.lon])
+  if (coords.length < 2) return
+  tourPathLine = L.polyline(coords, {
+    color: 'var(--accent,#e94560)', weight: 2, opacity: 0.35
+  }).addTo(map)
 }
 
 // POI added/loaded from tour — show on map immediately
