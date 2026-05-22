@@ -11,8 +11,8 @@
   <link rel="icon" type="image/png" href="/guided-tour/favicon.png" />
   <title>Guided Tour</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script type="module" crossorigin src="/guided-tour/assets/index-C-aeZFYu.js"></script>
-  <link rel="stylesheet" crossorigin href="/guided-tour/assets/index-CY9Z6iVX.css">
+  <script type="module" crossorigin src="/guided-tour/assets/index-CqBQX5o0.js"></script>
+  <link rel="stylesheet" crossorigin href="/guided-tour/assets/index-IoCPZzEZ.css">
 </head>
 <body>
   <div id="app">
@@ -37,14 +37,10 @@
           <h2 id="fc-name"></h2>
           <p id="fc-type"></p>
         </div>
-        <button id="fc-img-toggle" class="fc-icon-btn hidden" title="Toggle image" aria-label="Show/hide image">⊞</button>
       </div>
 
-      <!-- Image (hidden by default, toggled) -->
-      <div id="fc-image-wrap" class="hidden">
-        <img id="fc-wiki-thumb" src="" alt="" />
-        <p id="fc-wiki-credit" class="hidden"></p>
-      </div>
+      <!-- Thumbnail strip -->
+      <div id="fc-image-strip" class="hidden"></div>
 
       <div id="flashcard-content">
         <p id="fc-desc"></p>
@@ -197,6 +193,15 @@
         <button id="btn-recenter" title="Re-center on my location">⊙</button>
       </div>
     </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="fc-lightbox" class="hidden" role="dialog" aria-modal="true">
+    <button id="fc-lb-close" aria-label="Close">✕</button>
+    <button id="fc-lb-prev" aria-label="Previous image">‹</button>
+    <button id="fc-lb-next" aria-label="Next image">›</button>
+    <img id="fc-lb-img" src="" alt="" />
+    <p id="fc-lb-credit" class="hidden"></p>
   </div>
 
 </body>
