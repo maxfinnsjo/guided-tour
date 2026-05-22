@@ -441,9 +441,6 @@ tour.setPickModeHandler(enterPickMode)
 
 // ── TBS Guide integration ─────────────────────────────────────────────────────
 
-// When launched from the WP guide-mode template, the parent page posts a config
-// object via postMessage. We signal ready first so the parent can send config
-// even if our listener wasn't up when the iframe finished loading.
 function handleGuideInit(cfg) {
   if (!cfg || !cfg.stops) return
   window._tbsGuide = cfg
@@ -471,20 +468,16 @@ function handleGuideInit(cfg) {
   }, 100)
 }
 
+// Register the listener BEFORE posting TBS_GUIDE_READY so we never miss the reply.
 window.addEventListener('message', e => {
   if (!e.data) return
   if (e.data.type === 'TBS_GUIDE_INIT') handleGuideInit(e.data.config)
 })
 
-// Signal to the parent shell that we're ready to receive config.
-// The parent may have already posted before this listener was registered,
-// so we also check a global the parent can set synchronously.
+// Signal ready. The parent's 200 ms fallback also covers the case where this
+// fires before the parent's own message listener is attached.
 if (window.parent !== window) {
   window.parent.postMessage({ type: 'TBS_GUIDE_READY' }, '*')
-}
-if (window._tbsGuidePending) {
-  handleGuideInit(window._tbsGuidePending)
-  delete window._tbsGuidePending
 }
 
 // ── Service worker ────────────────────────────────────────────────────────────
