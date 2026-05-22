@@ -16,6 +16,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let userMarker = null
 let userLatLon = null        // kept current for drawer distance sorting
+let manualPin = null         // { lat, lon } when user has overridden position
+let manualPinMarker = null
 let poiMarkers = new Map()  // id → marker
 let loadedPOIs = new Map()  // id → poi
 let lastFetchCenter = null
@@ -33,6 +35,7 @@ function clearPOIs() {
 
 const statusText = document.getElementById('status-text')
 const recenterBtn = document.getElementById('btn-recenter')
+const clearPinBtn = document.getElementById('btn-clear-pin')
 const btnTheme = document.getElementById('btn-theme')
 const btnTour = document.getElementById('btn-tour')
 const tourPanel = document.getElementById('tour-panel')
@@ -65,12 +68,70 @@ btnTheme.addEventListener('click', () => {
 btnTour.addEventListener('click', () => tourPanel.classList.toggle('hidden'))
 tourClose.addEventListener('click', () => tourPanel.classList.add('hidden'))
 recenterBtn.addEventListener('click', () => {
-  if (!userLatLon) return
-  map.setView([userLatLon.lat, userLatLon.lon], map.getZoom())
+  const pos = manualPin || userLatLon
+  if (!pos) return
+  map.setView([pos.lat, pos.lon], map.getZoom())
   if (lastFetchCenter) {
-    const d = distance(userLatLon.lat, userLatLon.lon, lastFetchCenter.lat, lastFetchCenter.lon)
-    if (d > REFETCH_DISTANCE) { clearPOIs(); fetchPOIs(userLatLon.lat, userLatLon.lon) }
+    const d = distance(pos.lat, pos.lon, lastFetchCenter.lat, lastFetchCenter.lon)
+    if (d > REFETCH_DISTANCE) { clearPOIs(); fetchPOIs(pos.lat, pos.lon) }
   }
+})
+
+function setManualPin(lat, lon) {
+  manualPin = { lat, lon }
+  const pinIcon = L.divIcon({
+    className: '',
+    html: `<div style="
+      font-size:24px;line-height:1;
+      filter:drop-shadow(0 2px 3px #00000080);
+      transform:translateY(-100%);
+    ">📍</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+  })
+  if (!manualPinMarker) {
+    manualPinMarker = L.marker([lat, lon], { icon: pinIcon, zIndexOffset: 500 }).addTo(map)
+  } else {
+    manualPinMarker.setLatLng([lat, lon])
+  }
+  clearPinBtn.classList.remove('hidden')
+  map.setView([lat, lon], Math.max(map.getZoom(), 16))
+  clearPOIs()
+  fetchPOIs(lat, lon)
+  centered = true
+  if (accuracyTimer) { clearTimeout(accuracyTimer); accuracyTimer = null }
+}
+
+function clearManualPin() {
+  manualPin = null
+  if (manualPinMarker) { manualPinMarker.remove(); manualPinMarker = null }
+  clearPinBtn.classList.add('hidden')
+  // If we have a real GPS position, jump back to it
+  if (userLatLon) {
+    map.setView([userLatLon.lat, userLatLon.lon], map.getZoom())
+    clearPOIs()
+    fetchPOIs(userLatLon.lat, userLatLon.lon)
+  }
+}
+
+clearPinBtn.addEventListener('click', clearManualPin)
+
+// Right-click on desktop
+map.on('contextmenu', e => {
+  setManualPin(e.latlng.lat, e.latlng.lng)
+})
+
+// Long-press on mobile (500ms)
+let longPressTimer = null
+map.on('mousedown touchstart', e => {
+  const latlng = e.latlng
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null
+    setManualPin(latlng.lat, latlng.lng)
+  }, 500)
+})
+map.on('mouseup mousemove touchend touchmove', () => {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null }
 })
 
 poiDrawerHandle.addEventListener('click', () => {
@@ -256,6 +317,9 @@ function onPosition(pos) {
       }, ACCURACY_WAIT_MS)
     }
   }
+
+  // When manually pinned, GPS still updates the dot but doesn't drive fetches/proximity
+  if (manualPin) return
 
   const distFromLast = lastFetchCenter
     ? distance(lat, lon, lastFetchCenter.lat, lastFetchCenter.lon)

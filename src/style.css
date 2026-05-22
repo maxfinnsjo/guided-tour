@@ -114,6 +114,19 @@ button#btn-recenter {
   line-height: 1;
   color: var(--text);
 }
+#status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#btn-clear-pin {
+  background: var(--surface2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
 #btn-theme {
   background: transparent;
   color: var(--text);
