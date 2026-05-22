@@ -435,6 +435,26 @@ function enterPickMode(cb) {
 
 tour.setPickModeHandler(enterPickMode)
 
+// ── TBS Guide integration ─────────────────────────────────────────────────────
+
+// When launched from the WP guide-mode template, the parent page posts a config
+// object via postMessage. We load the tour from it and wire autosave back to WP.
+window.addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'TBS_GUIDE_INIT') return
+  const cfg = e.data.config
+  if (!cfg || !cfg.stops) return
+
+  // Store config so tour.js can reach it for autosave
+  window._tbsGuide = cfg
+
+  // Pre-load the tour — give the app a tick to finish initialising first
+  setTimeout(() => {
+    if (cfg.stops.length) {
+      tour.loadFromWP(cfg.tour_name, cfg.stops)
+    }
+  }, 100)
+})
+
 // ── Service worker ────────────────────────────────────────────────────────────
 
 if ('serviceWorker' in navigator) {

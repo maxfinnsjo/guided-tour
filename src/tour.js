@@ -28,6 +28,7 @@ const addPickBtn = document.getElementById('add-poi-pick')
 const addType = document.getElementById('add-poi-type')
 const addDesc = document.getElementById('add-poi-desc')
 const addWiki = document.getElementById('add-poi-wiki')
+const addManualSection = document.getElementById('tour-add-manual')
 
 // ── Tour controls bar ─────────────────────────────────────────────────────────
 const tourControls = document.getElementById('tour-controls')
@@ -61,6 +62,7 @@ function saveTourState() {
   }
   saveTours(tours)
   refreshSavedSelect()
+  saveToWP()
 }
 
 function refreshSavedSelect() {
@@ -72,6 +74,34 @@ function refreshSavedSelect() {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
+}
+
+// ── WP autosave ───────────────────────────────────────────────────────────────
+
+let _wpSaveTimer = null
+
+function saveToWP() {
+  const cfg = window._tbsGuide
+  if (!cfg || !cfg.rest_url || !cfg.nonce) return
+  clearTimeout(_wpSaveTimer)
+  _wpSaveTimer = setTimeout(() => {
+    fetch(cfg.rest_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+      body: JSON.stringify(pois),
+    }).catch(() => {})
+  }, 800)
+}
+
+export function loadFromWP(name, stops) {
+  pois = stops.map(normalizeImportedPOI)
+  currentTourName = name
+  nameInput.value = name
+  renderList()
+  enableStart()
+  pois.forEach(poi =>
+    document.dispatchEvent(new CustomEvent('tour:poi-added', { detail: poi }))
+  )
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
@@ -265,18 +295,18 @@ addForm.addEventListener('submit', e => {
   if (!name) return
   const lat = parseFloat(addLat.value) || null
   const lon = parseFloat(addLon.value) || null
-  const wiki = addWiki.value.trim()
+  const wiki = addWiki ? addWiki.value.trim() : ''
   addPOI({
     id: crypto.randomUUID(),
     name,
     lat,
     lon,
-    type: addType.value.trim() || 'poi',
-    desc: addDesc.value.trim(),
+    type: addType ? (addType.value.trim() || 'poi') : 'poi',
+    desc: addDesc ? addDesc.value.trim() : '',
     tags: wiki ? { wikipedia: wiki } : {},
   })
   addForm.reset()
-  document.getElementById('tour-add-section').open = false
+  if (addManualSection) addManualSection.open = false
 })
 
 addPickBtn.addEventListener('click', () => {
@@ -286,6 +316,9 @@ addPickBtn.addEventListener('click', () => {
     addLat.value = lat.toFixed(6)
     addLon.value = lon.toFixed(6)
     panel.classList.remove('hidden')
+    // Open the manual section and focus the name field
+    if (addManualSection) addManualSection.open = true
+    setTimeout(() => { if (addName) addName.focus() }, 50)
   })
 })
 

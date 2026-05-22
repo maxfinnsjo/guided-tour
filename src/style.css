@@ -592,20 +592,51 @@ button#btn-recenter {
 
 #tour-add-section {
   margin-bottom: 16px;
+}
+.tour-add-primary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+.tour-add-primary-btn:hover { filter: brightness(1.1); }
+#tour-add-manual {
   border: 1px solid var(--border2);
   border-radius: 10px;
   overflow: hidden;
 }
-#tour-add-section summary {
+#tour-add-manual > summary {
   padding: 10px 14px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--muted);
   user-select: none;
   list-style: none;
 }
-#tour-add-section summary::-webkit-details-marker { display: none; }
+#tour-add-manual > summary::-webkit-details-marker { display: none; }
+.tour-add-extra {
+  margin-top: 4px;
+}
+.tour-add-extra > summary {
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+.tour-add-extra > summary::-webkit-details-marker { display: none; }
 #tour-add-form {
   display: flex;
   flex-direction: column;
@@ -626,12 +657,7 @@ button#btn-recenter {
 #tour-add-form textarea { resize: vertical; }
 #add-poi-coords { display: flex; gap: 8px; }
 #add-poi-coords input { flex: 1; }
-#add-poi-pick {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border2);
-  font-weight: 400;
-}
+#add-poi-pick { display: none; }
 
 #tour-import {
   display: flex;

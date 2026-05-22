@@ -126,22 +126,27 @@
         </label>
       </div>
 
-      <!-- Add a stop manually -->
-      <details id="tour-add-section">
-        <summary>+ Add a stop</summary>
-        <form id="tour-add-form" autocomplete="off">
-          <input id="add-poi-name" type="text" placeholder="Stop name (e.g. City Hall) *" required />
-          <div id="add-poi-coords">
-            <input id="add-poi-lat" type="text" placeholder="Latitude" inputmode="decimal" />
-            <input id="add-poi-lon" type="text" placeholder="Longitude" inputmode="decimal" />
-          </div>
-          <button type="button" id="add-poi-pick">📍 Pick location on map</button>
-          <input id="add-poi-type" type="text" placeholder="Category (e.g. museum, park)" />
-          <textarea id="add-poi-desc" placeholder="Your notes about this stop" rows="3"></textarea>
-          <input id="add-poi-wiki" type="text" placeholder="Wikipedia page title (optional)" />
-          <button type="submit">Add stop</button>
-        </form>
-      </details>
+      <!-- Add a stop -->
+      <div id="tour-add-section">
+        <button type="button" id="add-poi-pick" class="tour-add-primary-btn">📍 Tap map to add a stop</button>
+        <details id="tour-add-manual">
+          <summary>+ Add manually (lat/lon)</summary>
+          <form id="tour-add-form" autocomplete="off">
+            <input id="add-poi-name" type="text" placeholder="Stop name *" required />
+            <div id="add-poi-coords">
+              <input id="add-poi-lat" type="text" placeholder="Latitude" inputmode="decimal" />
+              <input id="add-poi-lon" type="text" placeholder="Longitude" inputmode="decimal" />
+            </div>
+            <details class="tour-add-extra">
+              <summary>More details (optional)</summary>
+              <input id="add-poi-type" type="text" placeholder="Category (e.g. museum, park)" />
+              <textarea id="add-poi-desc" placeholder="Your notes about this stop" rows="3"></textarea>
+              <input id="add-poi-wiki" type="text" placeholder="Wikipedia page title" />
+            </details>
+            <button type="submit">Add stop</button>
+          </form>
+        </details>
+      </div>
 
       <!-- Import from file -->
       <div id="tour-import">
