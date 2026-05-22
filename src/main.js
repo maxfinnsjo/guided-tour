@@ -21,6 +21,7 @@ let manualPinMarker = null
 let poiMarkers = new Map()  // id → marker
 let loadedPOIs = new Map()  // id → poi
 let lastFetchCenter = null
+let routeLine = null         // dashed line from user to current tour POI
 const FETCH_RADIUS = 600
 const REFETCH_DISTANCE = 200
 const PROXIMITY_ALERT = 80
@@ -242,13 +243,18 @@ function checkProximity(lat, lon) {
   }
 }
 
+let lastAutoAlertedIndex = -1
+
 function checkTourProximity(lat, lon) {
+  if (!tour.isAutoMode()) return
   const poi = tour.getCurrentPOI()
   if (!poi || poi.lat == null) return
+  const idx = tour.getCurrentIndex()
+  if (idx === lastAutoAlertedIndex) return
   const d = distance(lat, lon, poi.lat, poi.lon)
   if (d < PROXIMITY_ALERT) {
+    lastAutoAlertedIndex = idx
     showCard(poi)
-    tour.markVisited(tour.getCurrentIndex())
   }
 }
 
@@ -335,6 +341,10 @@ function onPosition(pos) {
 
     if (tour.isActive()) {
       checkTourProximity(lat, lon)
+      if (routeLine) {
+        const poi = tour.getCurrentPOI()
+        if (poi?.lat != null) routeLine.setLatLngs([[lat, lon], [poi.lat, poi.lon]])
+      }
     } else {
       checkProximity(lat, lon)
     }
@@ -357,6 +367,7 @@ watchPosition(
 // ── Tour integration ──────────────────────────────────────────────────────────
 
 document.addEventListener('tour:started', () => {
+  lastAutoAlertedIndex = -1
   for (const poi of tour.getPOIs()) {
     if (poi.lat && poi.lon) {
       loadedPOIs.set(poi.id, poi)
@@ -364,7 +375,38 @@ document.addEventListener('tour:started', () => {
     }
   }
   refreshDrawer()
+  updateRouteLine()
 })
+
+document.addEventListener('tour:step', e => {
+  lastAutoAlertedIndex = -1
+  const { poi } = e.detail
+  updateRouteLine()
+  // Pan map to show both user and next POI
+  if (poi?.lat != null && userLatLon) {
+    const bounds = L.latLngBounds(
+      [userLatLon.lat, userLatLon.lon],
+      [poi.lat, poi.lon]
+    )
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 })
+  } else if (poi?.lat != null) {
+    map.setView([poi.lat, poi.lon], 16)
+  }
+})
+
+document.addEventListener('tour:stopped', () => {
+  if (routeLine) { routeLine.remove(); routeLine = null }
+})
+
+function updateRouteLine() {
+  const poi = tour.getCurrentPOI()
+  if (routeLine) { routeLine.remove(); routeLine = null }
+  if (!poi?.lat || !userLatLon) return
+  routeLine = L.polyline(
+    [[userLatLon.lat, userLatLon.lon], [poi.lat, poi.lon]],
+    { color: 'var(--accent,#e94560)', weight: 2, dashArray: '6 6', opacity: 0.7 }
+  ).addTo(map)
+}
 
 // POI added/loaded from tour — show on map immediately
 document.addEventListener('tour:poi-added', e => {

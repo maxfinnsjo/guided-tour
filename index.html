@@ -150,6 +150,16 @@
         </label>
       </div>
 
+      <div id="tour-mode-row">
+        <label class="tour-mode-opt">
+          <input type="radio" name="tour-mode" value="manual" checked />
+          <span>Manual</span>
+        </label>
+        <label class="tour-mode-opt">
+          <input type="radio" name="tour-mode" value="auto" />
+          <span>Auto</span>
+        </label>
+      </div>
       <button id="tour-start" class="disabled" disabled>▶ Start Tour</button>
       <ol id="tour-list"></ol>
     </div>
@@ -161,6 +171,17 @@
         <span id="poi-drawer-label">Nearby places</span>
       </div>
       <ul id="poi-drawer-list"></ul>
+    </div>
+
+    <!-- Tour controls bar (visible only during active tour) -->
+    <div id="tour-controls" class="hidden">
+      <button id="tc-prev" title="Previous stop">‹</button>
+      <div id="tc-center">
+        <span id="tc-step"></span>
+        <button id="tc-name" title="Show info"></button>
+      </div>
+      <button id="tc-next" title="Next stop">›</button>
+      <button id="tc-stop" title="End tour">✕</button>
     </div>
 
     <div id="status-bar">

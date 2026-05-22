@@ -5,6 +5,7 @@ const LS_KEY = 'guided-tour:tours'
 let pois = []
 let currentIndex = 0
 let active = false
+let tourMode = 'manual'  // 'manual' | 'auto'
 let currentTourName = null
 let pickModeHandler = null
 
@@ -27,6 +28,14 @@ const addPickBtn = document.getElementById('add-poi-pick')
 const addType = document.getElementById('add-poi-type')
 const addDesc = document.getElementById('add-poi-desc')
 const addWiki = document.getElementById('add-poi-wiki')
+
+// ── Tour controls bar ─────────────────────────────────────────────────────────
+const tourControls = document.getElementById('tour-controls')
+const tcPrev = document.getElementById('tc-prev')
+const tcNext = document.getElementById('tc-next')
+const tcName = document.getElementById('tc-name')
+const tcStep = document.getElementById('tc-step')
+const tcStop = document.getElementById('tc-stop')
 
 // ── localStorage helpers ───────────────────────────────────────────────────────
 
@@ -68,9 +77,32 @@ function escHtml(s) {
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export function isActive() { return active }
+export function isAutoMode() { return tourMode === 'auto' }
 export function getPOIs() { return pois }
 export function getCurrentIndex() { return currentIndex }
 export function getCurrentPOI() { return pois[currentIndex] ?? null }
+
+export function advance() {
+  if (!active || currentIndex >= pois.length - 1) return false
+  const li = list.children[currentIndex]
+  if (li) li.classList.add('visited')
+  currentIndex++
+  highlightCurrent()
+  updateControls()
+  document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
+  return true
+}
+
+export function retreat() {
+  if (!active || currentIndex <= 0) return false
+  currentIndex--
+  const li = list.children[currentIndex]
+  if (li) li.classList.remove('visited')
+  highlightCurrent()
+  updateControls()
+  document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
+  return true
+}
 
 export function listSavedTours() { return loadSavedTours() }
 
@@ -139,18 +171,18 @@ export function removePOI(id) {
 export function setPickModeHandler(fn) { pickModeHandler = fn }
 
 export function markVisited(index) {
-  const li = list.children[index]
-  if (li) li.classList.add('visited')
-  if (index === currentIndex) {
-    currentIndex = Math.min(currentIndex + 1, pois.length)
-    highlightCurrent()
-  }
+  if (index !== currentIndex) return
+  advance()
 }
 
 export function stop() {
   active = false
+  tourMode = 'manual'
   modeLabel.textContent = 'Exploring'
+  document.body.classList.remove('tour-active')
+  tourControls.classList.add('hidden')
   enableStart()
+  document.dispatchEvent(new CustomEvent('tour:stopped'))
 }
 
 // ── UI event wiring ───────────────────────────────────────────────────────────
@@ -214,11 +246,16 @@ fileInput.addEventListener('change', async e => {
 
 startBtn.addEventListener('click', () => {
   if (!pois.length) return
+  const modeInput = document.querySelector('input[name="tour-mode"]:checked')
+  tourMode = modeInput?.value ?? 'manual'
   active = true
   currentIndex = 0
-  modeLabel.textContent = 'On Tour'
+  modeLabel.textContent = tourMode === 'auto' ? 'Auto Tour' : 'On Tour'
   renderList()
   panel.classList.add('hidden')
+  document.body.classList.add('tour-active')
+  tourControls.classList.remove('hidden')
+  updateControls()
   document.dispatchEvent(new CustomEvent('tour:started'))
 })
 
@@ -251,6 +288,22 @@ addPickBtn.addEventListener('click', () => {
     panel.classList.remove('hidden')
   })
 })
+
+tcPrev.addEventListener('click', () => retreat())
+tcNext.addEventListener('click', () => advance())
+tcStop.addEventListener('click', () => stop())
+tcName.addEventListener('click', () => {
+  const poi = pois[currentIndex]
+  if (poi) import('./flashcard.js').then(({ show }) => show(poi))
+})
+
+function updateControls() {
+  const poi = pois[currentIndex]
+  tcStep.textContent = `Stop ${currentIndex + 1} of ${pois.length}${tourMode === 'auto' ? ' · Auto' : ''}`
+  tcName.textContent = poi?.name ?? ''
+  tcPrev.disabled = currentIndex <= 0
+  tcNext.disabled = currentIndex >= pois.length - 1
+}
 
 // ── Render ────────────────────────────────────────────────────────────────────
 

@@ -72,6 +72,71 @@ html, body, #app {
   z-index: 0;
 }
 
+/* ── Tour controls bar ── */
+:root { --tour-controls-h: 52px; }
+#tour-controls {
+  position: fixed;
+  bottom: var(--status-h);
+  left: 0; right: 0;
+  height: var(--tour-controls-h);
+  background: var(--surface2);
+  border-top: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  z-index: 999;
+  transition: transform 0.25s ease;
+}
+#tour-controls.hidden { transform: translateY(100%); pointer-events: none; }
+#tc-prev, #tc-next {
+  background: transparent;
+  color: var(--text);
+  font-size: 1.6rem;
+  padding: 0 6px;
+  line-height: 1;
+  min-width: 32px;
+}
+#tc-prev:disabled, #tc-next:disabled { color: var(--muted); }
+#tc-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+#tc-step {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+#tc-name {
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  border: none;
+}
+#tc-stop {
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0 4px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+}
+/* Push map bottom edge up when tour controls are visible */
+body.tour-active #map { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
+body.tour-active #poi-drawer { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
+
 /* ── Status bar ── */
 #status-bar {
   position: fixed;
@@ -583,6 +648,31 @@ button#btn-recenter {
 }
 #tour-import input[type="file"] { color: var(--text); font-size: 0.82rem; }
 
+#tour-mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tour-mode-opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text2);
+  transition: border-color 0.15s, color 0.15s;
+}
+.tour-mode-opt:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tour-mode-opt input { accent-color: var(--accent); }
 #tour-start { width: 100%; margin-bottom: 16px; }
 
 #tour-list {
