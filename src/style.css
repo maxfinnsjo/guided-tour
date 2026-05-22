@@ -133,9 +133,33 @@ html, body, #app {
   border: 1px solid var(--border2);
   border-radius: 6px;
 }
+#tc-desc {
+  font-size: 0.68rem;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+  min-height: 0;
+}
 /* Push map bottom edge up when tour controls are visible */
 body.tour-active #map { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
 body.tour-active #poi-drawer { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
+
+/* ── Guide mode: hide non-essential chrome ── */
+body.guide-mode #btn-tour { display: none; }
+body.guide-mode #btn-theme { display: none; }
+body.guide-mode #poi-drawer { display: none; }
+body.guide-mode #btn-recenter { display: none; }
+body.guide-mode #btn-clear-pin { display: none; }
+/* Enlarge Next/Prev for gloved/walking use */
+body.guide-mode #tc-prev,
+body.guide-mode #tc-next {
+  font-size: 2.2rem;
+  min-width: 48px;
+  padding: 0 10px;
+}
 
 /* ── Practice mode badge ── */
 #practice-badge {

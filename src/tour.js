@@ -8,6 +8,7 @@ let active = false
 let tourMode = 'manual'  // 'manual' | 'auto'
 let currentTourName = null
 let pickModeHandler = null
+let resumeIndex = 0     // remembered across accidental Stop
 
 const panel = document.getElementById('tour-panel')
 const list = document.getElementById('tour-list')
@@ -117,9 +118,9 @@ export function advance() {
   const li = list.children[currentIndex]
   if (li) li.classList.add('visited')
   currentIndex++
+  resumeIndex = currentIndex
   highlightCurrent()
   updateControls()
-  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
   return true
 }
@@ -127,16 +128,16 @@ export function advance() {
 export function retreat() {
   if (!active || currentIndex <= 0) return false
   currentIndex--
+  resumeIndex = currentIndex
   const li = list.children[currentIndex]
   if (li) li.classList.remove('visited')
   highlightCurrent()
   updateControls()
-  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
   return true
 }
 
-function _showCurrentCard() {
+export function showCurrentCard() {
   const poi = pois[currentIndex]
   if (poi) import('./flashcard.js').then(({ show }) => show(poi))
 }
@@ -216,20 +217,20 @@ export function autoStart() {
   if (!pois.length || active) return
   tourMode = 'manual'
   active = true
-  currentIndex = 0
+  currentIndex = resumeIndex < pois.length ? resumeIndex : 0
   modeLabel.textContent = 'On Tour'
   renderList()
   panel.classList.add('hidden')
   document.body.classList.add('tour-active')
   tourControls.classList.remove('hidden')
   updateControls()
-  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:started'))
 }
 
 export function stop() {
   active = false
   tourMode = 'manual'
+  // resumeIndex is preserved so restart continues from where we left off
   modeLabel.textContent = 'Exploring'
   document.body.classList.remove('tour-active')
   tourControls.classList.add('hidden')
@@ -346,16 +347,24 @@ addPickBtn.addEventListener('click', () => {
 
 tcPrev.addEventListener('click', () => retreat())
 tcNext.addEventListener('click', () => advance())
-tcStop.addEventListener('click', () => stop())
-tcName.addEventListener('click', () => {
-  const poi = pois[currentIndex]
-  if (poi) import('./flashcard.js').then(({ show }) => show(poi))
+tcStop.addEventListener('click', () => {
+  if (confirm('End the tour? You can resume from this stop later.')) stop()
 })
+tcName.addEventListener('click', () => showCurrentCard())
 
 function updateControls() {
   const poi = pois[currentIndex]
-  tcStep.textContent = `Stop ${currentIndex + 1} of ${pois.length}${tourMode === 'auto' ? ' · Auto' : ''}`
+  tcStep.textContent = `Stop ${currentIndex + 1} of ${pois.length}`
   tcName.textContent = poi?.name ?? ''
+  tcName.title = poi?.desc ? poi.desc : 'Tap for more info'
+  // Show desc snippet below name if available
+  let descEl = document.getElementById('tc-desc')
+  if (!descEl) {
+    descEl = document.createElement('span')
+    descEl.id = 'tc-desc'
+    tcName.parentNode.insertBefore(descEl, tcName.nextSibling)
+  }
+  descEl.textContent = poi?.desc ? poi.desc : ''
   tcPrev.disabled = currentIndex <= 0
   tcNext.disabled = currentIndex >= pois.length - 1
 }

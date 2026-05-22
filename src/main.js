@@ -246,7 +246,7 @@ function checkProximity(lat, lon) {
 let lastAutoAlertedIndex = -1
 
 function checkTourProximity(lat, lon) {
-  if (!tour.isAutoMode()) return
+  if (!tour.isActive()) return
   const poi = tour.getCurrentPOI()
   if (!poi || poi.lat == null) return
   const idx = tour.getCurrentIndex()
@@ -445,10 +445,14 @@ function handleGuideInit(cfg) {
   if (!cfg || !cfg.stops) return
   window._tbsGuide = cfg
 
+  // Strip non-essential UI when running inside the WP guide-mode shell
+  document.body.classList.add('guide-mode')
+
   if (cfg.practice) {
     const badge = document.createElement('div')
     badge.id = 'practice-badge'
     badge.textContent = 'Practice Mode'
+    badge.addEventListener('click', () => badge.remove())
     document.getElementById('app').appendChild(badge)
   }
 
