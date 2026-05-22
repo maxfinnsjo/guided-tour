@@ -1,4 +1,4 @@
-const CACHE = 'guided-tour-v3'
+const CACHE = 'guided-tour-v4'
 
 self.addEventListener('install', e => {
   // Only cache the shell HTML — not source files, which Vite rewrites
