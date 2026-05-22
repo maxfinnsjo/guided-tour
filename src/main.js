@@ -260,8 +260,9 @@ function checkTourProximity(lat, lon) {
 
 // ── Location tracking ─────────────────────────────────────────────────────────
 
-const ACCURACY_THRESHOLD = 100  // metres — ignore coarse fixes for initial centering
-const ACCURACY_WAIT_MS = 15000  // fall back to best available after this long
+const ACCURACY_THRESHOLD = 100   // metres — ignore coarse fixes for initial centering
+const ACCURACY_WAIT_MS = 8000    // fall back to best available after this long
+const DESKTOP_HINT_ACCURACY = 500 // metres — show right-click hint if worse than this
 
 statusText.textContent = 'Finding your location…'
 let centered = false
@@ -311,14 +312,22 @@ function onPosition(pos) {
     if (accuracyTimer) { clearTimeout(accuracyTimer); accuracyTimer = null }
     _centerAndFetch(lat, lon)
   } else if (!centered) {
-    statusText.textContent = `Improving accuracy… (±${Math.round(accuracy)}m)`
+    if (accuracy > DESKTOP_HINT_ACCURACY) {
+      statusText.textContent = `Poor location (±${Math.round(accuracy)}m) — right-click map to pin your position`
+    } else {
+      statusText.textContent = `Improving accuracy… (±${Math.round(accuracy)}m)`
+    }
     // Start the fallback timer on the first position we receive
     if (!accuracyTimer) {
       accuracyTimer = setTimeout(() => {
         if (!centered && userLatLon) {
-          statusText.textContent = `Low accuracy (±${Math.round(bestAccuracy)}m) — using best available`
-          setTimeout(() => { statusText.textContent = '' }, 4000)
-          _centerAndFetch(userLatLon.lat, userLatLon.lon)
+          if (bestAccuracy > DESKTOP_HINT_ACCURACY) {
+            statusText.textContent = `Poor GPS — right-click map to pin your start position`
+          } else {
+            statusText.textContent = `Low accuracy (±${Math.round(bestAccuracy)}m) — using best available`
+            setTimeout(() => { statusText.textContent = '' }, 4000)
+            _centerAndFetch(userLatLon.lat, userLatLon.lon)
+          }
         }
       }, ACCURACY_WAIT_MS)
     }
@@ -447,10 +456,19 @@ window.addEventListener('message', e => {
   // Store config so tour.js can reach it for autosave
   window._tbsGuide = cfg
 
-  // Pre-load the tour — give the app a tick to finish initialising first
+  // Pre-load the tour, then auto-start it centered on stop 1
   setTimeout(() => {
-    if (cfg.stops.length) {
-      tour.loadFromWP(cfg.tour_name, cfg.stops)
+    if (!cfg.stops.length) return
+    tour.loadFromWP(cfg.tour_name, cfg.stops)
+    tour.autoStart()
+    const first = cfg.stops[0]
+    if (first?.lat != null && first?.lon != null) {
+      map.setView([first.lat, first.lon], 17)
+      if (!centered) {
+        centered = true
+        if (accuracyTimer) { clearTimeout(accuracyTimer); accuracyTimer = null }
+        fetchPOIs(first.lat, first.lon)
+      }
     }
   }, 100)
 })

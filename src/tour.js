@@ -205,6 +205,20 @@ export function markVisited(index) {
   advance()
 }
 
+export function autoStart() {
+  if (!pois.length || active) return
+  tourMode = 'manual'
+  active = true
+  currentIndex = 0
+  modeLabel.textContent = 'On Tour'
+  renderList()
+  panel.classList.add('hidden')
+  document.body.classList.add('tour-active')
+  tourControls.classList.remove('hidden')
+  updateControls()
+  document.dispatchEvent(new CustomEvent('tour:started'))
+}
+
 export function stop() {
   active = false
   tourMode = 'manual'
