@@ -119,6 +119,7 @@ export function advance() {
   currentIndex++
   highlightCurrent()
   updateControls()
+  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
   return true
 }
@@ -130,8 +131,14 @@ export function retreat() {
   if (li) li.classList.remove('visited')
   highlightCurrent()
   updateControls()
+  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:step', { detail: { index: currentIndex, poi: pois[currentIndex] } }))
   return true
+}
+
+function _showCurrentCard() {
+  const poi = pois[currentIndex]
+  if (poi) import('./flashcard.js').then(({ show }) => show(poi))
 }
 
 export function listSavedTours() { return loadSavedTours() }
@@ -216,6 +223,7 @@ export function autoStart() {
   document.body.classList.add('tour-active')
   tourControls.classList.remove('hidden')
   updateControls()
+  _showCurrentCard()
   document.dispatchEvent(new CustomEvent('tour:started'))
 }
 

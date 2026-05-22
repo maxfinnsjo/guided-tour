@@ -442,16 +442,19 @@ tour.setPickModeHandler(enterPickMode)
 // ── TBS Guide integration ─────────────────────────────────────────────────────
 
 // When launched from the WP guide-mode template, the parent page posts a config
-// object via postMessage. We load the tour from it and wire autosave back to WP.
-window.addEventListener('message', e => {
-  if (!e.data || e.data.type !== 'TBS_GUIDE_INIT') return
-  const cfg = e.data.config
+// object via postMessage. We signal ready first so the parent can send config
+// even if our listener wasn't up when the iframe finished loading.
+function handleGuideInit(cfg) {
   if (!cfg || !cfg.stops) return
-
-  // Store config so tour.js can reach it for autosave
   window._tbsGuide = cfg
 
-  // Pre-load the tour, then auto-start it centered on stop 1
+  if (cfg.practice) {
+    const badge = document.createElement('div')
+    badge.id = 'practice-badge'
+    badge.textContent = 'Practice Mode'
+    document.getElementById('app').appendChild(badge)
+  }
+
   setTimeout(() => {
     if (!cfg.stops.length) return
     tour.loadFromWP(cfg.tour_name, cfg.stops)
@@ -466,7 +469,23 @@ window.addEventListener('message', e => {
       }
     }
   }, 100)
+}
+
+window.addEventListener('message', e => {
+  if (!e.data) return
+  if (e.data.type === 'TBS_GUIDE_INIT') handleGuideInit(e.data.config)
 })
+
+// Signal to the parent shell that we're ready to receive config.
+// The parent may have already posted before this listener was registered,
+// so we also check a global the parent can set synchronously.
+if (window.parent !== window) {
+  window.parent.postMessage({ type: 'TBS_GUIDE_READY' }, '*')
+}
+if (window._tbsGuidePending) {
+  handleGuideInit(window._tbsGuidePending)
+  delete window._tbsGuidePending
+}
 
 // ── Service worker ────────────────────────────────────────────────────────────
 

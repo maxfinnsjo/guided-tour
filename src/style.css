@@ -137,6 +137,24 @@ html, body, #app {
 body.tour-active #map { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
 body.tour-active #poi-drawer { bottom: calc(var(--status-h) + var(--tour-controls-h)); }
 
+/* ── Practice mode badge ── */
+#practice-badge {
+  position: fixed;
+  top: calc(var(--header-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #c9a84c;
+  color: #1a1a2e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  z-index: 1001;
+  pointer-events: none;
+}
+
 /* ── Status bar ── */
 #status-bar {
   position: fixed;
