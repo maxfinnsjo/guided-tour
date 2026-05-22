@@ -386,6 +386,7 @@ document.addEventListener('tour:step', e => {
   lastAutoAlertedIndex = -1
   const { poi } = e.detail
   updateRouteLine()
+  if (poi) showCard(poi)
   // Pan map to show both user and next POI
   if (poi?.lat != null && userLatLon) {
     const bounds = L.latLngBounds(
